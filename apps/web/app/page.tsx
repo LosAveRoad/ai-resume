@@ -1,5 +1,5 @@
-import { ResumeEditor } from "./ResumeEditor";
+import { ResumeWorkspace } from "./ResumeWorkspace";
 
 export default function Home() {
-  return <ResumeEditor />;
+  return <ResumeWorkspace />;
 }
