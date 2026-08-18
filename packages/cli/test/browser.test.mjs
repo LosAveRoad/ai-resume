@@ -25,12 +25,15 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
     const rendered = runCli(["render", input, "--out", preview, "--port", String(43173 + index)]);
     assertSuccess(rendered);
     assert.match(rendered.stdout, /Rendered page count: 1/);
+    assert.match(rendered.stdout, /Page utilization: \d+%/);
+    assert.match(rendered.stdout, /appears underfilled/);
     assert.ok((await stat(preview)).size > 10_000);
   }
 
   const exported = runCli(["export", input, "--out", pdf, "--port", "43174"]);
   assertSuccess(exported);
   assert.match(exported.stdout, /Rendered page count: 1/);
+  assert.match(exported.stdout, /Page utilization: \d+%/);
   assert.ok((await stat(pdf)).size > 10_000);
 });
 
