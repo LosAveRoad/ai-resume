@@ -10,6 +10,8 @@
 - 字段级 Markdown：`1.`、`-`、粗体、斜体、行内代码和链接
 - A4 实时分页预览与浏览器本地自动保存
 - 正文字号、行距、模块间距和页边距调节
+- 三套可切换内置模板：现代编号、经典酒红、校园深蓝；每套独立记忆排版参数
+- 可选照片上传与位置 / 缩放裁剪；无照片时模板自动重排
 - 结构化 JSON / Markdown 导入导出和确定性 PDF 导出
 - 本地素材库与角色定制工作流
 - CLI：初始化、校验、结构检查、启动编辑器、PNG 渲染、PDF 导出、Skill 安装
@@ -55,7 +57,7 @@ resume/
 ai-resume validate resume/resume.json
 ai-resume inspect resume/resume.json
 ai-resume render resume/resume.json --out resume/output/preview.png
-# Agent 用视觉能力查看 preview.png 并修改内容或 layout，然后重复 render
+# Agent 用视觉能力查看 preview.png 并修改内容、模板或当前模板 layout，然后重复 render
 ai-resume export resume/resume.json --out resume/output/resume.pdf
 ```
 
@@ -92,6 +94,8 @@ ai-resume dev --port 3000
 ```
 
 打开 <http://localhost:3000>。页面底部是结构化表单；Markdown 只在段落与经历描述内部生效，不作为整份简历的数据结构。
+
+模板共享同一个语义 DOM，样式分别位于 `apps/web/app/templates/*.css`，注册信息位于 `apps/web/app/templates/index.ts`。需要二次开发时，让 Coding Agent 复制一份作用域 CSS、增加模板 ID 与注册项即可；内容 schema 和分页引擎不需要复制。
 
 ## CLI 命令
 

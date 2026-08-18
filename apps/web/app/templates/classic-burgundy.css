@@ -1,0 +1,108 @@
+.resume-page[data-template="classic-burgundy"] {
+  --template-accent: #7e1528;
+  color: #202124;
+  font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+.resume-page[data-template="classic-burgundy"] .resume-header {
+  min-height: 38mm;
+  padding: 0 0 3mm;
+  display: grid;
+  grid-template-areas: "identity photo" "contacts photo";
+  grid-template-columns: minmax(0, 1fr) 25mm;
+  align-items: end;
+  column-gap: 12mm;
+  row-gap: 5mm;
+  border-bottom: .3mm solid #888;
+}
+.resume-page[data-template="classic-burgundy"] .name-lockup { grid-area: identity; }
+.resume-page[data-template="classic-burgundy"] .resume-header h2 {
+  color: #242124;
+  font-family: STSong, SimSun, "Songti SC", serif;
+  font-size: 29pt;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .12em;
+}
+.resume-page[data-template="classic-burgundy"] .resume-role {
+  margin-top: 4mm;
+  color: var(--template-accent);
+  font-family: STSong, SimSun, "Songti SC", serif;
+  font-size: 13pt;
+  letter-spacing: .13em;
+}
+.resume-page[data-template="classic-burgundy"] .resume-photo-slot { grid-area: photo; align-self: start; justify-self: end; }
+.resume-page[data-template="classic-burgundy"] .resume-photo {
+  width: 25mm;
+  height: 31mm;
+  border: .2mm solid #555;
+}
+.resume-page[data-template="classic-burgundy"] .resume-photo img { filter: grayscale(1) contrast(1.05); }
+.resume-page[data-template="classic-burgundy"] .resume-contact {
+  grid-area: contacts;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm 4mm;
+  color: #333;
+  font-size: 7.4pt;
+}
+.resume-page[data-template="classic-burgundy"] .contact-item { gap: 0; }
+.resume-page[data-template="classic-burgundy"] .contact-item:not(:last-child)::after {
+  content: "|";
+  margin-left: 4mm;
+  color: #777;
+}
+.resume-page[data-template="classic-burgundy"] .contact-item b,
+.resume-page[data-template="classic-burgundy"] .contact-icon { display: none; }
+.resume-page[data-template="classic-burgundy"][data-has-photo="false"] .resume-header {
+  grid-template-areas: "identity" "contacts";
+  grid-template-columns: 1fr;
+}
+
+.resume-page[data-template="classic-burgundy"] .resume-section {
+  margin-top: var(--resume-section-gap);
+  padding-top: 2.5mm;
+  border-top: .2mm solid #777;
+}
+.resume-page[data-template="classic-burgundy"] .section-rail {
+  margin-bottom: 2mm;
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+}
+.resume-page[data-template="classic-burgundy"] .section-rail::before {
+  content: "";
+  width: 4mm;
+  height: .8mm;
+  background: var(--template-accent);
+}
+.resume-page[data-template="classic-burgundy"] .section-rail h3 {
+  color: var(--template-accent);
+  font-family: STSong, SimSun, "Songti SC", serif;
+  font-size: 11pt;
+  font-weight: 650;
+  letter-spacing: .14em;
+}
+.resume-page[data-template="classic-burgundy"] .section-content { padding: 0; }
+.resume-page[data-template="classic-burgundy"] .resume-prose p + p,
+.resume-page[data-template="classic-burgundy"] .resume-prose p + ul,
+.resume-page[data-template="classic-burgundy"] .resume-prose p + ol { margin-top: 1mm; }
+.resume-page[data-template="classic-burgundy"] [data-section-id="skills"] .compact-list {
+  padding-left: 0;
+  list-style: none;
+}
+.resume-page[data-template="classic-burgundy"] [data-section-id="skills"] .compact-list li {
+  display: grid;
+  grid-template-columns: 36mm minmax(0, 1fr);
+  gap: 2mm;
+}
+.resume-page[data-template="classic-burgundy"] .resume-entry + .resume-entry {
+  margin-top: 2.2mm;
+  padding-top: 2.2mm;
+  border-top: .2mm dashed #a8a8a8;
+}
+.resume-page[data-template="classic-burgundy"] .entry-heading { margin-bottom: .8mm; }
+.resume-page[data-template="classic-burgundy"] .entry-title-group strong { font-size: 9pt; }
+.resume-page[data-template="classic-burgundy"] .entry-title-group > span { font-size: 8pt; }
+.resume-page[data-template="classic-burgundy"] .entry-meta { color: #333; font-size: 7.6pt; }
+.resume-page[data-template="classic-burgundy"] .page-number { display: none; }

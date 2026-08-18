@@ -3,12 +3,13 @@ import { resolve } from "node:path";
 
 const HEADER_FIELDS = ["name", "role", "phone", "email", "location", "website"];
 const ENTRY_FIELDS = ["id", "title", "subtitle", "startDate", "endDate", "location", "details"];
+const TEMPLATE_IDS = ["numbered-rail", "classic-burgundy", "campus-navy"];
 const LAYOUT_BOUNDS = {
   fontSize: [8.25, 11.5],
   lineHeight: [1.2, 1.7],
-  marginX: [10, 24],
-  marginY: [10, 24],
-  sectionGap: [4, 16],
+  marginX: [8, 24],
+  marginY: [8, 24],
+  sectionGap: [3, 16],
 };
 
 export async function readResume(input, cwd = process.cwd()) {
@@ -33,23 +34,26 @@ export async function readResume(input, cwd = process.cwd()) {
 export function validateResume(value) {
   const errors = [];
   if (!isObject(value)) return ["$: expected an object"];
-  if (value.version !== 2) errors.push("$.version: expected 2");
+  if (value.version !== 3) errors.push("$.version: expected 3");
 
   if (!isObject(value.header)) {
     errors.push("$.header: expected an object");
   } else {
     for (const field of HEADER_FIELDS) requireString(value.header[field], `$.header.${field}`, errors);
+    validatePhoto(value.header.photo, "$.header.photo", errors);
   }
 
-  if (!isObject(value.layout)) {
-    errors.push("$.layout: expected an object");
+  if (!isObject(value.presentation)) {
+    errors.push("$.presentation: expected an object");
   } else {
-    for (const [field, [minimum, maximum]] of Object.entries(LAYOUT_BOUNDS)) {
-      const number = value.layout[field];
-      if (!Number.isFinite(number)) {
-        errors.push(`$.layout.${field}: expected a finite number`);
-      } else if (number < minimum || number > maximum) {
-        errors.push(`$.layout.${field}: expected ${minimum}–${maximum}, received ${number}`);
+    if (!TEMPLATE_IDS.includes(value.presentation.activeTemplate)) {
+      errors.push(`$.presentation.activeTemplate: expected one of ${TEMPLATE_IDS.map(JSON.stringify).join(", ")}`);
+    }
+    if (!isObject(value.presentation.layouts)) {
+      errors.push("$.presentation.layouts: expected an object");
+    } else {
+      for (const templateId of TEMPLATE_IDS) {
+        validateLayout(value.presentation.layouts[templateId], `$.presentation.layouts.${templateId}`, errors);
       }
     }
   }
@@ -102,6 +106,7 @@ export function validateResume(value) {
 
 export function inspectResume(resume, file) {
   const visibleSections = resume.sections.filter((section) => section.visible);
+  const activeTemplate = resume.presentation.activeTemplate;
   const entries = visibleSections.reduce((sum, section) => sum + section.entries.length, 0);
   const markdownCharacters = visibleSections.reduce((sum, section) => (
     sum + section.text.length + section.entries.reduce((entrySum, entry) => entrySum + entry.details.length, 0)
@@ -110,7 +115,9 @@ export function inspectResume(resume, file) {
     file,
     name: resume.header.name,
     role: resume.header.role,
-    layout: resume.layout,
+    template: activeTemplate,
+    layout: resume.presentation.layouts[activeTemplate],
+    hasPhoto: Boolean(resume.header.photo),
     sections: resume.sections.map((section) => ({
       id: section.id,
       title: section.title,
@@ -125,6 +132,38 @@ export function inspectResume(resume, file) {
       markdownCharacters,
     },
   };
+}
+
+function validateLayout(layout, path, errors) {
+  if (!isObject(layout)) {
+    errors.push(`${path}: expected an object`);
+    return;
+  }
+  for (const [field, [minimum, maximum]] of Object.entries(LAYOUT_BOUNDS)) {
+    const number = layout[field];
+    if (!Number.isFinite(number)) {
+      errors.push(`${path}.${field}: expected a finite number`);
+    } else if (number < minimum || number > maximum) {
+      errors.push(`${path}.${field}: expected ${minimum}–${maximum}, received ${number}`);
+    }
+  }
+}
+
+function validatePhoto(photo, path, errors) {
+  if (photo === null) return;
+  if (!isObject(photo)) {
+    errors.push(`${path}: expected null or an object`);
+    return;
+  }
+  if (typeof photo.src !== "string" || !photo.src.startsWith("data:image/")) {
+    errors.push(`${path}.src: expected an image data URL`);
+  }
+  for (const [field, minimum, maximum] of [["positionX", 0, 100], ["positionY", 0, 100], ["zoom", 1, 2]]) {
+    const number = photo[field];
+    if (!Number.isFinite(number) || number < minimum || number > maximum) {
+      errors.push(`${path}.${field}: expected ${minimum}–${maximum}`);
+    }
+  }
 }
 
 export function formatValidationErrors(errors) {

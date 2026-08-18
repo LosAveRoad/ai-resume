@@ -1,0 +1,122 @@
+.resume-page[data-template="numbered-rail"] {
+  --template-accent: #f0442d;
+  --template-ink: #16191d;
+  color: #25282d;
+  font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+.resume-page[data-template="numbered-rail"] .resume-header {
+  min-height: 39mm;
+  padding: 0 0 5mm;
+  display: grid;
+  grid-template-areas: "identity photo" "contacts contacts";
+  grid-template-columns: minmax(0, 1fr) 30mm;
+  align-items: end;
+  column-gap: 12mm;
+  row-gap: 5mm;
+  border-bottom: .35mm solid #c8c8c5;
+}
+
+.resume-page[data-template="numbered-rail"] .name-lockup { grid-area: identity; }
+.resume-page[data-template="numbered-rail"] .resume-header h2 {
+  color: var(--template-ink);
+  font-size: 31pt;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+.resume-page[data-template="numbered-rail"] .resume-role {
+  margin-top: 3mm;
+  color: var(--template-accent);
+  font-size: 12pt;
+  font-weight: 650;
+  line-height: 1;
+}
+.resume-page[data-template="numbered-rail"] .resume-photo-slot {
+  grid-area: photo;
+  justify-self: end;
+}
+.resume-page[data-template="numbered-rail"] .resume-photo {
+  width: 30mm;
+  height: 33mm;
+  border-radius: 1.3mm;
+}
+.resume-page[data-template="numbered-rail"] .resume-contact {
+  grid-area: contacts;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2mm 7mm;
+  color: #34383d;
+  font-size: 7.5pt;
+  line-height: 1.2;
+}
+.resume-page[data-template="numbered-rail"] .contact-item { gap: 1.5mm; }
+.resume-page[data-template="numbered-rail"] .contact-item b { display: none; }
+.resume-page[data-template="numbered-rail"] .contact-icon::before { font-size: 8.5pt; }
+.resume-page[data-template="numbered-rail"] [data-contact="phone"] .contact-icon::before { content: "☎"; }
+.resume-page[data-template="numbered-rail"] [data-contact="email"] .contact-icon::before { content: "✉"; }
+.resume-page[data-template="numbered-rail"] [data-contact="location"] .contact-icon::before { content: "⌖"; }
+.resume-page[data-template="numbered-rail"] [data-contact="website"] .contact-icon::before { content: "↗"; }
+.resume-page[data-template="numbered-rail"][data-has-photo="false"] .resume-header {
+  grid-template-areas: "identity" "contacts";
+  grid-template-columns: 1fr;
+}
+
+.resume-page[data-template="numbered-rail"] .resume-section {
+  margin-top: var(--resume-section-gap);
+  padding-top: 4mm;
+  display: grid;
+  grid-template-columns: 34mm minmax(0, 1fr);
+  border-top: .25mm solid #c8c8c5;
+}
+.resume-page[data-template="numbered-rail"] .section-rail {
+  padding: 0 6mm 0 0;
+}
+.resume-page[data-template="numbered-rail"] .section-index {
+  position: relative;
+  width: max-content;
+  padding-bottom: 2mm;
+  display: block;
+  color: #171a1e;
+  font-size: 13pt;
+  font-weight: 650;
+  line-height: 1;
+}
+.resume-page[data-template="numbered-rail"] .section-index::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 6mm;
+  height: .8mm;
+  background: var(--template-accent);
+}
+.resume-page[data-template="numbered-rail"] .section-rail h3 {
+  margin-top: 2.3mm;
+  color: #14171b;
+  font-size: 11.5pt;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: .04em;
+}
+.resume-page[data-template="numbered-rail"] .section-content {
+  min-height: 13mm;
+  padding: 0 0 .5mm 6mm;
+  border-left: .25mm solid #c8c8c5;
+}
+.resume-page[data-template="numbered-rail"] .resume-prose p + p,
+.resume-page[data-template="numbered-rail"] .resume-prose p + ul,
+.resume-page[data-template="numbered-rail"] .resume-prose p + ol { margin-top: 1.3mm; }
+.resume-page[data-template="numbered-rail"] .compact-list li::marker { color: #16191d; }
+.resume-page[data-template="numbered-rail"] .resume-entry + .resume-entry {
+  margin-top: 3mm;
+  padding-top: 3mm;
+  border-top: .2mm dashed #d4d2cd;
+}
+.resume-page[data-template="numbered-rail"] .entry-heading { margin-bottom: 1.1mm; }
+.resume-page[data-template="numbered-rail"] .entry-title-group strong { color: #17191c; font-size: 10.2pt; }
+.resume-page[data-template="numbered-rail"] .entry-title-group > span { color: #42464c; font-size: 8pt; }
+.resume-page[data-template="numbered-rail"] .entry-meta { color: #20242a; font-size: 7.8pt; }
+.resume-page[data-template="numbered-rail"] .entry-meta em { color: #757575; }
+.resume-page[data-template="numbered-rail"] .page-number { display: none; }

@@ -1,0 +1,108 @@
+.resume-page[data-template="campus-navy"] {
+  --template-accent: #082d67;
+  color: #161d28;
+  font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+.resume-page[data-template="campus-navy"] .resume-header {
+  min-height: 32mm;
+  padding: 0 0 2.5mm;
+  display: grid;
+  grid-template-areas: "identity photo" "contacts contacts";
+  grid-template-columns: minmax(0, 1fr) 31mm;
+  align-items: end;
+  column-gap: 10mm;
+  row-gap: 3mm;
+  border-bottom: .5mm solid var(--template-accent);
+}
+.resume-page[data-template="campus-navy"] .name-lockup { grid-area: identity; align-self: center; }
+.resume-page[data-template="campus-navy"] .resume-header h2 {
+  color: var(--template-accent);
+  font-size: 30pt;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+.resume-page[data-template="campus-navy"] .resume-role {
+  margin-top: 2.5mm;
+  color: var(--template-accent);
+  font-size: 12pt;
+  font-weight: 800;
+}
+.resume-page[data-template="campus-navy"] .resume-photo-slot { grid-area: photo; justify-self: end; }
+.resume-page[data-template="campus-navy"] .resume-photo {
+  width: 31mm;
+  height: 32mm;
+  border: .45mm solid var(--template-accent);
+}
+.resume-page[data-template="campus-navy"] .resume-contact {
+  grid-area: contacts;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1mm 4mm;
+  color: #1c2737;
+  font-size: 6.8pt;
+}
+.resume-page[data-template="campus-navy"] .contact-item { gap: .8mm; }
+.resume-page[data-template="campus-navy"] .contact-item:not(:last-child)::after {
+  content: "";
+  width: .2mm;
+  height: 3.5mm;
+  margin-left: 3mm;
+  background: #9aa4b3;
+}
+.resume-page[data-template="campus-navy"] .contact-item b { font-weight: 700; }
+.resume-page[data-template="campus-navy"] .contact-icon::before { color: var(--template-accent); font-size: 8pt; }
+.resume-page[data-template="campus-navy"] [data-contact="phone"] .contact-icon::before { content: "☎"; }
+.resume-page[data-template="campus-navy"] [data-contact="email"] .contact-icon::before { content: "✉"; }
+.resume-page[data-template="campus-navy"] [data-contact="location"] .contact-icon::before { content: "●"; }
+.resume-page[data-template="campus-navy"] [data-contact="website"] .contact-icon::before { content: "◆"; }
+.resume-page[data-template="campus-navy"][data-has-photo="false"] .resume-header {
+  grid-template-areas: "identity" "contacts";
+  grid-template-columns: 1fr;
+}
+
+.resume-page[data-template="campus-navy"] .resume-section {
+  margin-top: var(--resume-section-gap);
+  padding-top: .8mm;
+}
+.resume-page[data-template="campus-navy"] .section-rail {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  border-bottom: .45mm solid var(--template-accent);
+}
+.resume-page[data-template="campus-navy"] .section-icon {
+  width: 7mm;
+  height: 7mm;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--template-accent);
+  color: white;
+  font-family: Arial, sans-serif;
+  font-size: 6.5pt;
+  font-weight: 850;
+  line-height: 1;
+}
+.resume-page[data-template="campus-navy"] .section-rail h3 {
+  color: var(--template-accent);
+  font-size: 10.8pt;
+  font-weight: 850;
+  letter-spacing: .03em;
+}
+.resume-page[data-template="campus-navy"] .section-content { padding: 1.2mm 2.5mm 0; }
+.resume-page[data-template="campus-navy"] .resume-prose p + p,
+.resume-page[data-template="campus-navy"] .resume-prose p + ul,
+.resume-page[data-template="campus-navy"] .resume-prose p + ol { margin-top: .8mm; }
+.resume-page[data-template="campus-navy"] .compact-list { padding-left: 4.8mm; }
+.resume-page[data-template="campus-navy"] .compact-list li { padding-left: 1mm; }
+.resume-page[data-template="campus-navy"] .compact-list li::marker { color: var(--template-accent); }
+.resume-page[data-template="campus-navy"] .resume-entry + .resume-entry { margin-top: 1.3mm; }
+.resume-page[data-template="campus-navy"] .entry-heading { margin-bottom: .7mm; }
+.resume-page[data-template="campus-navy"] .entry-title-group strong { font-size: 9.5pt; }
+.resume-page[data-template="campus-navy"] .entry-title-group > span { font-size: 8pt; }
+.resume-page[data-template="campus-navy"] .entry-meta { color: #18202d; font-size: 7.5pt; }
+.resume-page[data-template="campus-navy"] .entry-meta em { color: #687386; }
+.resume-page[data-template="campus-navy"] .page-number { display: none; }

@@ -1,19 +1,39 @@
 {
-  "version": 2,
+  "version": 3,
   "header": {
     "name": "你的姓名",
     "role": "目标职位",
     "phone": "+86 138 0000 0000",
     "email": "you@example.com",
     "location": "城市",
-    "website": "github.com/your-name"
+    "website": "github.com/your-name",
+    "photo": null
   },
-  "layout": {
-    "fontSize": 10,
-    "lineHeight": 1.5,
-    "marginX": 14,
-    "marginY": 14,
-    "sectionGap": 8
+  "presentation": {
+    "activeTemplate": "numbered-rail",
+    "layouts": {
+      "numbered-rail": {
+        "fontSize": 9.25,
+        "lineHeight": 1.45,
+        "marginX": 11,
+        "marginY": 10,
+        "sectionGap": 6
+      },
+      "classic-burgundy": {
+        "fontSize": 8.5,
+        "lineHeight": 1.38,
+        "marginX": 15,
+        "marginY": 8,
+        "sectionGap": 3
+      },
+      "campus-navy": {
+        "fontSize": 8.5,
+        "lineHeight": 1.32,
+        "marginX": 10,
+        "marginY": 8,
+        "sectionGap": 3
+      }
+    }
   },
   "sections": [
     {

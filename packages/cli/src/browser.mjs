@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { resolveEditorRuntime } from "./paths.mjs";
 
-const STORAGE_KEY = "ai-resume.structured.v2";
+const STORAGE_KEY = "ai-resume.structured.v3";
 
 export async function renderResume({ resume, output, url, port = 4173, format }) {
   const outputPath = resolve(output);

@@ -25,5 +25,9 @@ test("server-renders the local resume editor shell", async () => {
   assert.match(html, /结构化编辑器/);
   assert.match(html, /Markdown 只在段落与经历描述内部生效/);
   assert.match(html, /导出 PDF/);
+  assert.match(html, /现代编号/);
+  assert.match(html, /经典酒红/);
+  assert.match(html, /校园深蓝/);
+  assert.match(html, /上传并裁剪照片/);
   assert.doesNotMatch(html, /SkeletonPreview|react-loading-skeleton|codex-preview/);
 });

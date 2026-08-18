@@ -27,7 +27,7 @@ Use the local material bank as the source of truth and `resume.json` as the edit
 
 1. Run `ai-resume render <file> --out <preview.png>`.
 2. Open and inspect the rendered PNG with native visual ability. Check page count, clipping, density, hierarchy, awkward wrapping, whitespace, alignment, and whether the strongest evidence is easy to find.
-3. Decide what to change. Prefer removing weak or redundant content and tightening language before shrinking type. Adjust `fontSize`, `lineHeight`, `sectionGap`, `marginX`, or `marginY` only when the visual result remains comfortably readable.
+3. Decide what to change. Prefer removing weak or redundant content and tightening language before shrinking type. You may switch `presentation.activeTemplate` between `numbered-rail`, `classic-burgundy`, and `campus-navy`. Adjust `fontSize`, `lineHeight`, `sectionGap`, `marginX`, or `marginY` under `presentation.layouts[activeTemplate]` only when the visual result remains comfortably readable.
 4. Render and inspect again. Do not claim a one-page result merely because validation succeeds or the CLI reports a page count.
 5. Never search for or invoke `fit`, `fit 1`, `compress`, or another automatic one-page command; this workflow intentionally does not provide one.
 

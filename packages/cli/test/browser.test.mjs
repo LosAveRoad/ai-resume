@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { stat, mkdtemp, rm } from "node:fs/promises";
+import { stat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -14,13 +14,19 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
 
   assertSuccess(runCli(["init", root]));
   const input = join(root, "resume", "resume.json");
-  const preview = join(root, "resume", "output", "preview.png");
   const pdf = join(root, "resume", "output", "resume.pdf");
 
-  const rendered = runCli(["render", input, "--out", preview, "--port", "43173"]);
-  assertSuccess(rendered);
-  assert.match(rendered.stdout, /Rendered page count: 1/);
-  assert.ok((await stat(preview)).size > 10_000);
+  const resume = JSON.parse(await readFile(input, "utf8"));
+  const templateIds = ["numbered-rail", "classic-burgundy", "campus-navy"];
+  for (const [index, templateId] of templateIds.entries()) {
+    resume.presentation.activeTemplate = templateId;
+    await writeFile(input, JSON.stringify(resume, null, 2));
+    const preview = join(root, "resume", "output", `${templateId}.png`);
+    const rendered = runCli(["render", input, "--out", preview, "--port", String(43173 + index)]);
+    assertSuccess(rendered);
+    assert.match(rendered.stdout, /Rendered page count: 1/);
+    assert.ok((await stat(preview)).size > 10_000);
+  }
 
   const exported = runCli(["export", input, "--out", pdf, "--port", "43174"]);
   assertSuccess(exported);

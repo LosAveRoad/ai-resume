@@ -1,24 +1,44 @@
 # Structured resume schema
 
-The editor consumes JSON version 2. Keep every listed property present, even when its value is empty.
+The editor consumes JSON version 3. Keep every listed property present, even when its value is empty.
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "header": {
     "name": "string",
     "role": "string",
     "phone": "string",
     "email": "string",
     "location": "string",
-    "website": "string"
+    "website": "string",
+    "photo": null
   },
-  "layout": {
-    "fontSize": 10,
-    "lineHeight": 1.5,
-    "marginX": 14,
-    "marginY": 14,
-    "sectionGap": 8
+  "presentation": {
+    "activeTemplate": "numbered-rail",
+    "layouts": {
+      "numbered-rail": {
+        "fontSize": 9.25,
+        "lineHeight": 1.45,
+        "marginX": 11,
+        "marginY": 10,
+        "sectionGap": 6
+      },
+      "classic-burgundy": {
+        "fontSize": 8.5,
+        "lineHeight": 1.38,
+        "marginX": 15,
+        "marginY": 8,
+        "sectionGap": 3
+      },
+      "campus-navy": {
+        "fontSize": 8.5,
+        "lineHeight": 1.32,
+        "marginX": 10,
+        "marginY": 8,
+        "sectionGap": 3
+      }
+    }
   },
   "sections": []
 }
@@ -28,8 +48,23 @@ Layout ranges enforced by the CLI and editor:
 
 - `fontSize`: 8.25–11.5 pt
 - `lineHeight`: 1.2–1.7
-- `marginX`, `marginY`: 10–24 mm
-- `sectionGap`: 4–16 px
+- `marginX`, `marginY`: 8–24 mm
+- `sectionGap`: 3–16 px
+
+`activeTemplate` must be `numbered-rail`, `classic-burgundy`, or `campus-navy`. Each template keeps its own layout values so switching away and back does not discard visual tuning. Modify the layout under `presentation.layouts[activeTemplate]` when visually refining the active template.
+
+`header.photo` is either `null` or an object containing an image data URL and crop state:
+
+```json
+{
+  "src": "data:image/webp;base64,...",
+  "positionX": 50,
+  "positionY": 50,
+  "zoom": 1
+}
+```
+
+`positionX` and `positionY` range from 0–100; `zoom` ranges from 1–2. The same photo crop is shared by every template while each template controls its frame size and grayscale treatment.
 
 Each section has this shape:
 

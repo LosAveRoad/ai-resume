@@ -11,12 +11,28 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import {
+  DEFAULT_TEMPLATE_ID,
+  RESUME_TEMPLATES,
+  TEMPLATE_IDS,
+  isTemplateId,
+  type LayoutData,
+  type TemplateId,
+} from "./templates";
 
-const STRUCTURED_KEY = "ai-resume.structured.v2";
+const STRUCTURED_KEY = "ai-resume.structured.v3";
+const LEGACY_STRUCTURED_KEY = "ai-resume.structured.v2";
 const LEGACY_DOCUMENT_KEY = "ai-resume.document.v1";
 const LEGACY_MARKDOWN_KEY = "ai-resume.markdown.v1";
 const LEGACY_LAYOUT_KEY = "ai-resume.layout.v1";
 const HEADER_BLOCK_ID = "__header";
+
+type PhotoData = {
+  src: string;
+  positionX: number;
+  positionY: number;
+  zoom: number;
+};
 
 type HeaderData = {
   name: string;
@@ -25,15 +41,10 @@ type HeaderData = {
   email: string;
   location: string;
   website: string;
+  photo: PhotoData | null;
 };
 
-type LayoutData = {
-  fontSize: number;
-  lineHeight: number;
-  marginX: number;
-  marginY: number;
-  sectionGap: number;
-};
+type HeaderTextKey = Exclude<keyof HeaderData, "photo">;
 
 type ResumeEntry = {
   id: string;
@@ -56,9 +67,12 @@ type ResumeSection = {
 };
 
 type ResumeDocument = {
-  version: 2;
+  version: 3;
   header: HeaderData;
-  layout: LayoutData;
+  presentation: {
+    activeTemplate: TemplateId;
+    layouts: Record<TemplateId, LayoutData>;
+  };
   sections: ResumeSection[];
 };
 
@@ -68,13 +82,11 @@ declare global {
   }
 }
 
-const DEFAULT_LAYOUT: LayoutData = {
-  fontSize: 10,
-  lineHeight: 1.5,
-  marginX: 14,
-  marginY: 14,
-  sectionGap: 8,
-};
+const DEFAULT_LAYOUT: LayoutData = RESUME_TEMPLATES[DEFAULT_TEMPLATE_ID].defaultLayout;
+
+const DEFAULT_LAYOUTS = Object.fromEntries(
+  TEMPLATE_IDS.map((templateId) => [templateId, { ...RESUME_TEMPLATES[templateId].defaultLayout }]),
+) as Record<TemplateId, LayoutData>;
 
 const FIXED_SECTION_IDS: Record<string, string> = {
   "教育背景": "education",
@@ -87,7 +99,7 @@ const FIXED_SECTION_IDS: Record<string, string> = {
 };
 
 const DEFAULT_RESUME: ResumeDocument = {
-  version: 2,
+  version: 3,
   header: {
     name: "林晓然",
     role: "AI AGENT ENGINEER · BACKEND ENGINEER",
@@ -95,8 +107,12 @@ const DEFAULT_RESUME: ResumeDocument = {
     email: "xiaoran@example.com",
     location: "上海",
     website: "github.com/xiaoran-lin",
+    photo: null,
   },
-  layout: DEFAULT_LAYOUT,
+  presentation: {
+    activeTemplate: DEFAULT_TEMPLATE_ID,
+    layouts: DEFAULT_LAYOUTS,
+  },
   sections: [
     {
       id: "summary",
@@ -232,6 +248,9 @@ export function ResumeEditor() {
   const importRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
+  const activeTemplate = resume.presentation.activeTemplate;
+  const activeLayout = resume.presentation.layouts[activeTemplate];
+
   const visibleSections = useMemo(
     () => resume.sections.filter((section) => section.visible),
     [resume.sections],
@@ -241,12 +260,15 @@ export function ResumeEditor() {
     const frame = window.requestAnimationFrame(() => {
       try {
         const structured = localStorage.getItem(STRUCTURED_KEY);
+        const legacyStructured = localStorage.getItem(LEGACY_STRUCTURED_KEY);
         const legacyDocument = localStorage.getItem(LEGACY_DOCUMENT_KEY);
         const legacyMarkdown = localStorage.getItem(LEGACY_MARKDOWN_KEY);
         const legacyLayout = localStorage.getItem(LEGACY_LAYOUT_KEY);
 
         if (structured) {
           setResume(normalizeResume(JSON.parse(structured)));
+        } else if (legacyStructured) {
+          setResume(normalizeResume(JSON.parse(legacyStructured)));
         } else if (legacyDocument) {
           setResume(normalizeResume(JSON.parse(legacyDocument)));
         } else if (legacyMarkdown) {
@@ -264,7 +286,11 @@ export function ResumeEditor() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(STRUCTURED_KEY, JSON.stringify(resume));
+    try {
+      localStorage.setItem(STRUCTURED_KEY, JSON.stringify(resume));
+    } catch {
+      window.setTimeout(() => setNotice("本地存储空间不足，请更换尺寸更小的照片。"), 0);
+    }
   }, [hydrated, resume]);
 
   useEffect(() => {
@@ -278,7 +304,7 @@ export function ResumeEditor() {
     if (!measurement) return;
 
     window.__RESUME_READY__ = false;
-    const availableHeight = mmToPx(297 - resume.layout.marginY * 2);
+    const availableHeight = mmToPx(297 - activeLayout.marginY * 2);
     const nextPages: string[][] = [];
     let currentPage: string[] = [];
     let usedHeight = 0;
@@ -304,14 +330,37 @@ export function ResumeEditor() {
     setPages(nextPages.length > 0 ? nextPages : [[HEADER_BLOCK_ID]]);
     setOversizedSection(foundOversized);
     window.__RESUME_READY__ = hydrated;
-  }, [hydrated, resume]);
+  }, [activeLayout.marginY, hydrated, resume]);
 
-  const updateHeader = (key: keyof HeaderData, value: string) => {
+  const updateHeader = (key: HeaderTextKey, value: string) => {
     setResume((current) => ({ ...current, header: { ...current.header, [key]: value } }));
   };
 
+  const updatePhoto = (photo: PhotoData | null) => {
+    setResume((current) => ({ ...current, header: { ...current.header, photo } }));
+  };
+
+  const selectTemplate = (templateId: TemplateId) => {
+    setResume((current) => ({
+      ...current,
+      presentation: { ...current.presentation, activeTemplate: templateId },
+    }));
+  };
+
   const updateLayout = (key: keyof LayoutData, value: number) => {
-    setResume((current) => ({ ...current, layout: { ...current.layout, [key]: value } }));
+    setResume((current) => {
+      const templateId = current.presentation.activeTemplate;
+      return {
+        ...current,
+        presentation: {
+          ...current.presentation,
+          layouts: {
+            ...current.presentation.layouts,
+            [templateId]: { ...current.presentation.layouts[templateId], [key]: value },
+          },
+        },
+      };
+    });
   };
 
   const updateSection = (sectionId: string, patch: Partial<ResumeSection>) => {
@@ -386,7 +435,7 @@ export function ResumeEditor() {
     try {
       const content = await file.text();
       const imported = file.name.toLowerCase().endsWith(".md")
-        ? parseLegacyMarkdown(content, resume.layout)
+        ? parseLegacyMarkdown(content, activeLayout)
         : normalizeResume(JSON.parse(content));
       setResume(imported);
       setNotice("简历内容已载入。");
@@ -412,11 +461,11 @@ export function ResumeEditor() {
   };
 
   const pageStyles = {
-    "--resume-font-size": `${resume.layout.fontSize}pt`,
-    "--resume-line-height": resume.layout.lineHeight,
-    "--resume-margin-x": `${resume.layout.marginX}mm`,
-    "--resume-margin-y": `${resume.layout.marginY}mm`,
-    "--resume-section-gap": `${resume.layout.sectionGap}px`,
+    "--resume-font-size": `${activeLayout.fontSize}pt`,
+    "--resume-line-height": activeLayout.lineHeight,
+    "--resume-margin-x": `${activeLayout.marginX}mm`,
+    "--resume-margin-y": `${activeLayout.marginY}mm`,
+    "--resume-section-gap": `${activeLayout.sectionGap}px`,
   } as CSSProperties;
 
   return (
@@ -455,17 +504,19 @@ export function ResumeEditor() {
             </div>
           </header>
 
+          <TemplatePicker activeTemplate={activeTemplate} onSelect={selectTemplate} />
+
           <div className="page-wrap" data-preview-ready={hydrated ? "true" : "false"}>
             {pages.map((blockIds, pageIndex) => (
-              <ResumePage key={`${pageIndex}-${blockIds.join("-")}`} pageIndex={pageIndex} blockIds={blockIds} resume={resume} style={pageStyles} />
+              <ResumePage key={`${pageIndex}-${blockIds.join("-")}`} pageIndex={pageIndex} blockIds={blockIds} resume={resume} templateId={activeTemplate} style={pageStyles} />
             ))}
           </div>
         </div>
 
         <div className="measurement-wrap" aria-hidden="true">
-          <div ref={measureRef} className="resume-page measurement-page" style={pageStyles}>
+          <div ref={measureRef} className="resume-page measurement-page" data-template={activeTemplate} data-has-photo={resume.header.photo ? "true" : "false"} style={pageStyles}>
             <ResumeHeader header={resume.header} measure />
-            {visibleSections.map((section) => <ResumeSectionView key={section.id} section={section} measure />)}
+            {visibleSections.map((section, index) => <ResumeSectionView key={section.id} section={section} index={index} measure />)}
           </div>
         </div>
       </section>
@@ -483,7 +534,7 @@ export function ResumeEditor() {
 
           <div className="structured-editor">
             <div className="content-editor">
-              <HeaderEditor header={resume.header} onChange={updateHeader} />
+              <HeaderEditor header={resume.header} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
 
               {resume.sections.map((section, sectionIndex) => (
                 <SectionEditor
@@ -518,11 +569,11 @@ export function ResumeEditor() {
                 <p className="panel-label">PAGE STYLE</p>
                 <h3>页面版式</h3>
                 <div className="range-stack">
-                  <RangeField label="正文字号" value={resume.layout.fontSize} min={8.25} max={11.5} step={0.25} suffix="pt" onChange={(value) => updateLayout("fontSize", value)} />
-                  <RangeField label="行距" value={resume.layout.lineHeight} min={1.2} max={1.7} step={0.05} suffix="" onChange={(value) => updateLayout("lineHeight", value)} />
-                  <RangeField label="模块间距" value={resume.layout.sectionGap} min={4} max={16} step={1} suffix="px" onChange={(value) => updateLayout("sectionGap", value)} />
-                  <RangeField label="水平页边距" value={resume.layout.marginX} min={10} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginX", value)} />
-                  <RangeField label="垂直页边距" value={resume.layout.marginY} min={10} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginY", value)} />
+                  <RangeField label="正文字号" value={activeLayout.fontSize} min={8.25} max={11.5} step={0.25} suffix="pt" onChange={(value) => updateLayout("fontSize", value)} />
+                  <RangeField label="行距" value={activeLayout.lineHeight} min={1.2} max={1.7} step={0.05} suffix="" onChange={(value) => updateLayout("lineHeight", value)} />
+                  <RangeField label="模块间距" value={activeLayout.sectionGap} min={3} max={16} step={1} suffix="px" onChange={(value) => updateLayout("sectionGap", value)} />
+                  <RangeField label="水平页边距" value={activeLayout.marginX} min={8} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginX", value)} />
+                  <RangeField label="垂直页边距" value={activeLayout.marginY} min={8} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginY", value)} />
                 </div>
               </section>
 
@@ -548,7 +599,26 @@ export function ResumeEditor() {
   );
 }
 
-function HeaderEditor({ header, onChange }: { header: HeaderData; onChange: (key: keyof HeaderData, value: string) => void }) {
+function HeaderEditor({ header, onChange, onPhotoChange, onPhotoError }: {
+  header: HeaderData;
+  onChange: (key: HeaderTextKey, value: string) => void;
+  onPhotoChange: (photo: PhotoData | null) => void;
+  onPhotoError: (message: string) => void;
+}) {
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const importPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const src = await fileToDataUrl(file);
+      onPhotoChange({ src, positionX: 50, positionY: 50, zoom: 1 });
+    } catch {
+      onPhotoError("照片读取失败，请选择 PNG、JPEG 或 WebP 图片。");
+    }
+  };
+
   return (
     <section className="editor-card basic-card">
       <header className="card-heading">
@@ -562,6 +632,31 @@ function HeaderEditor({ header, onChange }: { header: HeaderData; onChange: (key
         <TextField label="邮箱" value={header.email} onChange={(value) => onChange("email", value)} />
         <TextField label="城市" value={header.location} onChange={(value) => onChange("location", value)} />
         <TextField label="主页" value={header.website} onChange={(value) => onChange("website", value)} />
+      </div>
+      <div className="photo-editor">
+        <div className="photo-editor-copy">
+          <strong>可选照片</strong>
+          <p>上传后通过位置与缩放完成裁剪；没有照片时模板会自动重排。</p>
+        </div>
+        {header.photo ? (
+          <div className="photo-crop-controls">
+            <ResumePhoto photo={header.photo} alt="照片裁剪预览" preview />
+            <div className="photo-range-stack">
+              <RangeField label="水平位置" value={header.photo.positionX} min={0} max={100} step={1} suffix="%" onChange={(value) => onPhotoChange({ ...header.photo!, positionX: value })} />
+              <RangeField label="垂直位置" value={header.photo.positionY} min={0} max={100} step={1} suffix="%" onChange={(value) => onPhotoChange({ ...header.photo!, positionY: value })} />
+              <RangeField label="缩放" value={header.photo.zoom} min={1} max={2} step={0.05} suffix="×" onChange={(value) => onPhotoChange({ ...header.photo!, zoom: value })} />
+            </div>
+            <div className="photo-actions">
+              <button type="button" onClick={() => photoInputRef.current?.click()}>更换</button>
+              <button className="danger-action" type="button" onClick={() => onPhotoChange(null)}>移除</button>
+            </div>
+          </div>
+        ) : (
+          <button className="photo-upload-button" type="button" onClick={() => photoInputRef.current?.click()}>
+            <span aria-hidden="true">＋</span> 上传并裁剪照片
+          </button>
+        )}
+        <input ref={photoInputRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={importPhoto} />
       </div>
     </section>
   );
@@ -662,13 +757,62 @@ function MarkdownField({ label, value, onChange }: { label: string; value: strin
   );
 }
 
-function ResumePage({ pageIndex, blockIds, resume, style }: { pageIndex: number; blockIds: string[]; resume: ResumeDocument; style: CSSProperties }) {
+function TemplatePicker({ activeTemplate, onSelect }: { activeTemplate: TemplateId; onSelect: (templateId: TemplateId) => void }) {
   return (
-    <article className="resume-page" style={style} data-page={pageIndex + 1}>
+    <div className="template-picker" role="radiogroup" aria-label="简历模板">
+      {TEMPLATE_IDS.map((templateId) => {
+        const template = RESUME_TEMPLATES[templateId];
+        return (
+          <button
+            key={templateId}
+            className="template-option"
+            type="button"
+            role="radio"
+            aria-checked={activeTemplate === templateId}
+            data-active={activeTemplate === templateId ? "true" : "false"}
+            data-template-card={templateId}
+            onClick={() => onSelect(templateId)}
+          >
+            <span className="template-miniature" aria-hidden="true">
+              <i className="mini-name" />
+              <i className="mini-photo" />
+              <i className="mini-rule" />
+              <i className="mini-section one" />
+              <i className="mini-section two" />
+              <i className="mini-section three" />
+            </span>
+            <span className="template-copy">
+              <b>{template.name}</b>
+              <small>{template.description}</small>
+            </span>
+            <span className="template-check" aria-hidden="true">✓</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResumePage({ pageIndex, blockIds, resume, templateId, style }: {
+  pageIndex: number;
+  blockIds: string[];
+  resume: ResumeDocument;
+  templateId: TemplateId;
+  style: CSSProperties;
+}) {
+  const visibleSections = resume.sections.filter((section) => section.visible);
+  return (
+    <article
+      className="resume-page"
+      style={style}
+      data-page={pageIndex + 1}
+      data-template={templateId}
+      data-has-photo={resume.header.photo ? "true" : "false"}
+    >
       {blockIds.map((blockId) => {
         if (blockId === HEADER_BLOCK_ID) return <ResumeHeader key={blockId} header={resume.header} />;
         const section = resume.sections.find((candidate) => candidate.id === blockId);
-        return section ? <ResumeSectionView key={section.id} section={section} /> : null;
+        return section ? <ResumeSectionView key={section.id} section={section} index={visibleSections.findIndex((candidate) => candidate.id === section.id)} /> : null;
       })}
       <span className="page-number" aria-hidden="true">{String(pageIndex + 1).padStart(2, "0")}</span>
     </article>
@@ -677,25 +821,80 @@ function ResumePage({ pageIndex, blockIds, resume, style }: { pageIndex: number;
 
 function ResumeHeader({ header, measure = false }: { header: HeaderData; measure?: boolean }) {
   return (
-    <header className="resume-header" data-block-id={measure ? HEADER_BLOCK_ID : undefined}>
+    <header className="resume-header" data-part="header" data-block-id={measure ? HEADER_BLOCK_ID : undefined}>
       <div className="name-lockup">
         <h2>{header.name || "你的姓名"}</h2>
         <p className="resume-role">{header.role || "目标职位"}</p>
       </div>
-      <div className="resume-contact">
-        {header.location && <span>{header.location}</span>}
-        {header.phone && <span>{header.phone}</span>}
-        {header.email && <span>{header.email}</span>}
-        {header.website && <span>{header.website}</span>}
+      <div className="resume-photo-slot">
+        {header.photo && <ResumePhoto photo={header.photo} alt={`${header.name || "候选人"}的照片`} />}
+      </div>
+      <div className="resume-contact" data-part="contacts">
+        {header.phone && <ContactItem kind="phone" label="手机" value={header.phone} />}
+        {header.email && <ContactItem kind="email" label="邮箱" value={header.email} />}
+        {header.location && <ContactItem kind="location" label="地点" value={header.location} />}
+        {header.website && <ContactItem kind="website" label="主页" value={header.website} />}
       </div>
     </header>
   );
 }
 
-function ResumeSectionView({ section, measure = false }: { section: ResumeSection; measure?: boolean }) {
+function ResumePhoto({ photo, alt, preview = false }: { photo: PhotoData; alt: string; preview?: boolean }) {
+  const style = {
+    "--photo-x": `${photo.positionX}%`,
+    "--photo-y": `${photo.positionY}%`,
+    "--photo-zoom": photo.zoom,
+  } as CSSProperties;
+  // Data URLs are user-owned local assets; Next Image cannot optimize them without changing export behavior.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <span className={`resume-photo${preview ? " is-preview" : ""}`} style={style}><img src={photo.src} alt={alt} /></span>;
+}
+
+function ContactItem({ kind, label, value }: { kind: "phone" | "email" | "location" | "website"; label: string; value: string }) {
   return (
-    <section className="resume-section" data-block-id={measure ? section.id : undefined}>
-      <div className="section-rail"><h3>{section.title}</h3><span>{section.kind === "entries" ? "EXPERIENCE" : "PROFILE"}</span></div>
+    <span className="contact-item" data-contact={kind}>
+      <i className="contact-icon" aria-hidden="true" />
+      <b>{label}：</b>
+      <span>{value}</span>
+    </span>
+  );
+}
+
+const SECTION_KICKERS: Record<string, string> = {
+  summary: "PROFILE",
+  skills: "SKILLS",
+  work: "EXPERIENCE",
+  internship: "INTERNSHIP",
+  projects: "PROJECTS",
+  education: "EDUCATION",
+  honors: "HONORS",
+};
+
+const SECTION_ICONS: Record<string, string> = {
+  summary: "●",
+  skills: "</>",
+  work: "▣",
+  internship: "▣",
+  projects: "◆",
+  education: "◆",
+  honors: "★",
+};
+
+function ResumeSectionView({ section, index, measure = false }: { section: ResumeSection; index: number; measure?: boolean }) {
+  return (
+    <section
+      className="resume-section"
+      data-part="section"
+      data-section-id={section.id}
+      data-section-kind={section.kind}
+      data-block-id={measure ? section.id : undefined}
+    >
+      <div className="section-rail" data-part="section-heading">
+        <span className="section-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+        <span className="section-icon" aria-hidden="true">{SECTION_ICONS[section.id] || "＋"}</span>
+        <h3>{section.title}</h3>
+        <span className="section-kicker">{SECTION_KICKERS[section.id] || (section.kind === "entries" ? "EXPERIENCE" : "PROFILE")}</span>
+      </div>
       <div className="section-content">
         {section.kind === "text"
           ? <MarkdownBlocks value={section.text} />
@@ -768,7 +967,7 @@ function RangeField({ label, value, min, max, step, suffix, onChange }: { label:
 }
 
 function parseLegacyMarkdown(markdown: string, layout: LayoutData): ResumeDocument {
-  const header: HeaderData = { name: "", role: "", phone: "", email: "", location: "", website: "" };
+  const header: HeaderData = { name: "", role: "", phone: "", email: "", location: "", website: "", photo: null };
   const sections: ResumeSection[] = [];
   let currentSection: ResumeSection | null = null;
   let currentEntry: ResumeEntry | null = null;
@@ -805,7 +1004,7 @@ function parseLegacyMarkdown(markdown: string, layout: LayoutData): ResumeDocume
     else currentSection.text = currentSection.text ? `${currentSection.text}\n${line}` : line;
   });
 
-  return { version: 2, header, layout, sections };
+  return { version: 3, header, presentation: createPresentation(DEFAULT_TEMPLATE_ID, layout), sections };
 }
 
 function parseEntryHeading(value: string, index: number): ResumeEntry {
@@ -852,15 +1051,27 @@ function renderInlineMarkdown(value: string): ReactNode[] {
 
 function normalizeResume(value: unknown): ResumeDocument {
   if (!value || typeof value !== "object") throw new Error("Invalid resume");
-  const candidate = value as { header?: Partial<HeaderData>; layout?: Partial<LayoutData>; sections?: Array<Partial<ResumeSection> & { entries?: Array<Partial<ResumeEntry> & { details?: unknown }> }> };
-  if (!candidate.header || !candidate.layout || !Array.isArray(candidate.sections)) throw new Error("Invalid resume");
+  const candidate = value as {
+    header?: Partial<HeaderData> & { photo?: unknown };
+    layout?: Partial<LayoutData>;
+    presentation?: { activeTemplate?: unknown; layouts?: Partial<Record<TemplateId, Partial<LayoutData>>> };
+    sections?: Array<Partial<ResumeSection> & { entries?: Array<Partial<ResumeEntry> & { details?: unknown }> }>;
+  };
+  if (!candidate.header || !Array.isArray(candidate.sections)) throw new Error("Invalid resume");
+  const activeTemplate = isTemplateId(candidate.presentation?.activeTemplate) ? candidate.presentation.activeTemplate : DEFAULT_TEMPLATE_ID;
+  const layouts = Object.fromEntries(TEMPLATE_IDS.map((templateId) => [
+    templateId,
+    normalizeLayout(candidate.presentation?.layouts?.[templateId] || RESUME_TEMPLATES[templateId].defaultLayout),
+  ])) as Record<TemplateId, LayoutData>;
+  if (candidate.layout) layouts[activeTemplate] = normalizeLayout(candidate.layout);
   return {
-    version: 2,
+    version: 3,
     header: {
       name: String(candidate.header.name || ""), role: String(candidate.header.role || ""), phone: String(candidate.header.phone || ""),
       email: String(candidate.header.email || ""), location: String(candidate.header.location || ""), website: String(candidate.header.website || ""),
+      photo: normalizePhoto(candidate.header.photo),
     },
-    layout: normalizeLayout(candidate.layout),
+    presentation: { activeTemplate, layouts },
     sections: candidate.sections.map((section, sectionIndex) => ({
       id: String(section.id || `section-${sectionIndex}`), title: String(section.title || "未命名模块"), kind: section.kind === "entries" ? "entries" : "text",
       visible: section.visible !== false, fixed: Boolean(section.fixed), text: String(section.text || ""),
@@ -871,6 +1082,27 @@ function normalizeResume(value: unknown): ResumeDocument {
       })) : [],
     })),
   };
+}
+
+function normalizePhoto(value: unknown): PhotoData | null {
+  if (!value || typeof value !== "object") return null;
+  const photo = value as Partial<PhotoData>;
+  if (typeof photo.src !== "string" || !photo.src.startsWith("data:image/")) return null;
+  return {
+    src: photo.src,
+    positionX: clamp(numberOr(photo.positionX, 50), 0, 100),
+    positionY: clamp(numberOr(photo.positionY, 50), 0, 100),
+    zoom: clamp(numberOr(photo.zoom, 1), 1, 2),
+  };
+}
+
+function createPresentation(activeTemplate: TemplateId, activeLayout?: LayoutData): ResumeDocument["presentation"] {
+  const layouts = Object.fromEntries(TEMPLATE_IDS.map((templateId) => [
+    templateId,
+    { ...RESUME_TEMPLATES[templateId].defaultLayout },
+  ])) as Record<TemplateId, LayoutData>;
+  if (activeLayout) layouts[activeTemplate] = normalizeLayout(activeLayout);
+  return { activeTemplate, layouts };
 }
 
 function normalizeLayout(value: Partial<LayoutData>): LayoutData {
@@ -924,7 +1156,34 @@ function downloadText(content: string, filename: string, type: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+async function fileToDataUrl(file: File) {
+  const source = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid image"));
+    reader.onerror = () => reject(reader.error || new Error("Unable to read image"));
+    reader.readAsDataURL(file);
+  });
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error("Unable to decode image"));
+    element.src = source;
+  });
+  const scale = Math.min(1, 1200 / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
 function numberOr(value: unknown, fallback: number) { return typeof value === "number" && Number.isFinite(value) ? value : fallback; }
+function clamp(value: number, minimum: number, maximum: number) { return Math.min(maximum, Math.max(minimum, value)); }
 function makeId(prefix: string) { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
 const mmToPx = (millimeters: number) => millimeters * 96 / 25.4;
 const slugify = (value: string) => value.trim().replace(/\s+/g, "-").replace(/[\\/:*?"<>|]/g, "") || "resume";
