@@ -11,8 +11,9 @@
 - A4 实时分页预览与浏览器本地自动保存
 - 正文字号、行距、模块间距和页边距调节
 - 三套可切换内置模板：现代编号、经典酒红、校园深蓝；每套独立记忆排版参数
+- 两套可快速切换的校招演示案例：同一候选人的 Agent 方向与后端方向简历
 - 可选照片上传与位置 / 缩放裁剪；无照片时模板自动重排
-- 结构化 JSON / Markdown 导入导出和确定性 PDF 导出
+- 撤回 / 反撤回、浏览器本地自动保存与确定性 PDF 导出
 - 本地素材库与角色定制工作流
 - CLI：初始化、校验、结构检查、启动编辑器、PNG 渲染、PDF 导出、Skill 安装
 - 标准 Agent Skill：Codex、Claude Code、DeepSeek Harness 共用同一套事实约束和视觉迭代流程
@@ -94,6 +95,8 @@ ai-resume dev --port 3000
 ```
 
 打开 <http://localhost:3000>。页面底部是结构化表单；Markdown 只在段落与经历描述内部生效，不作为整份简历的数据结构。
+
+顶部“案例速览”可在 Agent 与后端两种叙事之间一键切换。演示使用虚构候选人信息，项目描述参考 [Dify](https://github.com/langgenius/dify) 与 [Milvus](https://github.com/milvus-io/milvus) 的公开架构；“项目 Owner”为产品演示角色设定，不代表真实项目归属。载入案例属于一次可撤回编辑，不会让原草稿无法恢复。
 
 模板共享同一个语义 DOM，样式分别位于 `apps/web/app/templates/*.css`，注册信息位于 `apps/web/app/templates/index.ts`。需要二次开发时，让 Coding Agent 复制一份作用域 CSS、增加模板 ID 与注册项即可；内容 schema 和分页引擎不需要复制。
 

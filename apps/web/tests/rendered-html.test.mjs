@@ -28,6 +28,12 @@ test("server-renders the local resume editor shell", async () => {
   assert.match(html, /页面样式/);
   assert.ok(html.indexOf("页面样式") < html.indexOf("基本信息"));
   assert.match(html, /导出 PDF/);
+  assert.match(html, /简历案例速览/);
+  assert.match(html, /Agent 方向/);
+  assert.match(html, /后端方向/);
+  assert.match(html, /Dify · LLM 应用开发平台/);
+  assert.match(html, /Milvus · 云原生向量数据库/);
+  assert.match(html, /项目 Owner/);
   assert.match(html, /撤回/);
   assert.match(html, /反撤回/);
   assert.match(html, /<ol class="compact-list">/);

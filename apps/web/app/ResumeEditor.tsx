@@ -30,6 +30,7 @@ const LEGACY_LAYOUT_KEY = "ai-resume.layout.v1";
 const HEADER_BLOCK_ID = "__header";
 const ADD_MODULE_ID = "__add-module";
 const PAGE_STYLE_ID = "__page-style";
+const RESUME_CASE_IDS = ["agent", "backend"] as const;
 
 type PhotoData = {
   src: string;
@@ -80,6 +81,13 @@ type ResumeDocument = {
   sections: ResumeSection[];
 };
 
+type ResumeCaseId = typeof RESUME_CASE_IDS[number];
+
+const RESUME_CASE_META: Record<ResumeCaseId, { label: string; description: string }> = {
+  agent: { label: "Agent 方向", description: "工作流、RAG、工具调用与评测" },
+  backend: { label: "后端方向", description: "服务治理、异步任务与分布式存储" },
+};
+
 declare global {
   interface Window {
     __RESUME_READY__?: boolean;
@@ -87,10 +95,6 @@ declare global {
 }
 
 const DEFAULT_LAYOUT: LayoutData = RESUME_TEMPLATES[DEFAULT_TEMPLATE_ID].defaultLayout;
-
-const DEFAULT_LAYOUTS = Object.fromEntries(
-  TEMPLATE_IDS.map((templateId) => [templateId, { ...RESUME_TEMPLATES[templateId].defaultLayout }]),
-) as Record<TemplateId, LayoutData>;
 
 const FIXED_SECTION_IDS: Record<string, string> = {
   "教育背景": "education",
@@ -102,145 +106,162 @@ const FIXED_SECTION_IDS: Record<string, string> = {
   "自我评价": "summary",
 };
 
-const DEFAULT_RESUME: ResumeDocument = {
-  version: 3,
-  header: {
-    name: "林晓然",
-    role: "AI AGENT ENGINEER · BACKEND ENGINEER",
-    phone: "+86 138 0000 0000",
-    email: "xiaoran@example.com",
-    location: "上海",
-    website: "github.com/xiaoran-lin",
-    photo: null,
-  },
-  presentation: {
-    activeTemplate: DEFAULT_TEMPLATE_ID,
-    layouts: DEFAULT_LAYOUTS,
-  },
-  sections: [
+const SHOWCASE_RESUMES = Object.fromEntries(
+  RESUME_CASE_IDS.map((caseId) => [caseId, createShowcaseResume(caseId)]),
+) as Record<ResumeCaseId, ResumeDocument>;
+
+const DEFAULT_RESUME: ResumeDocument = SHOWCASE_RESUMES.agent;
+
+function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
+  const isAgent = caseId === "agent";
+  const activeTemplate: TemplateId = isAgent ? "numbered-rail" : "campus-navy";
+  const compactLayout: LayoutData = {
+    fontSize: 8.25,
+    lineHeight: isAgent ? 1.28 : 1.25,
+    marginX: isAgent ? 9 : 8,
+    marginY: 8,
+    sectionGap: 3,
+  };
+
+  return {
+    version: 3,
+    header: {
+      name: "陈知远",
+      role: isAgent ? "AI AGENT 工程师｜2026 届校招" : "GO 后端工程师｜2026 届校招",
+      phone: "+86 138 0000 0000",
+      email: "chen.zhiyuan@example.com",
+      location: "杭州",
+      website: "github.com/demo-candidate",
+      photo: null,
+    },
+    presentation: createPresentation(activeTemplate, compactLayout),
+    sections: [
+      {
+        id: "summary",
+        title: "个人简介",
+        kind: "text",
+        visible: true,
+        fixed: true,
+        text: isAgent
+          ? "2026 届计算机本科生，关注 **Agent 系统工程化**。能够独立完成需求抽象、工作流编排、RAG 检索、工具接入、评测与部署，习惯用可观测数据定位复杂链路问题。"
+          : "2026 届计算机本科生，主攻 **Go / Python 后端与分布式系统**。能够从 API、任务队列、数据模型推进到容器化交付，关注并发控制、数据一致性、可观测性与故障恢复。",
+        entries: [],
+      },
+      {
+        id: "education",
+        title: "教育背景",
+        kind: "entries",
+        visible: true,
+        fixed: true,
+        text: "",
+        entries: [
+          {
+            id: "education-demo",
+            title: "浙江大学",
+            subtitle: "计算机科学与技术 · 工学学士",
+            startDate: "2022.09",
+            endDate: "2026.06",
+            location: "杭州",
+            details: "1. GPA 3.78 / 4.0，专业前 10%\n2. 核心课程：数据结构、操作系统、数据库系统、计算机网络、分布式系统",
+          },
+        ],
+      },
+      {
+        id: "skills",
+        title: "专业技能",
+        kind: "text",
+        visible: true,
+        fixed: true,
+        text: isAgent
+          ? "- **语言与框架：** Python、TypeScript、Go；Flask、React、Celery\n- **Agent / RAG：** Workflow DAG、ReAct、Tool Calling、Prompt、Embedding、混合检索、Rerank、评测\n- **数据与交付：** PostgreSQL、Redis、Milvus、Docker、Kubernetes、GitHub Actions\n- **工程能力：** API 设计、异步任务、流式响应、日志 / Trace、自动化测试"
+          : "- **编程语言：** Go、Python、TypeScript；熟悉并发编程、网络编程与常用数据结构\n- **后端系统：** Flask、gRPC、REST、Celery、PostgreSQL、Redis、消息队列\n- **分布式基础：** WAL、共识与一致性、分片、负载均衡、存算分离、故障恢复\n- **云原生工程：** Docker、Kubernetes、etcd、对象存储、OpenTelemetry、GitHub Actions",
+        entries: [],
+      },
+      {
+        id: "work",
+        title: "工作经历",
+        kind: "entries",
+        visible: false,
+        fixed: true,
+        text: "",
+        entries: [],
+      },
+      {
+        id: "internship",
+        title: "实习经历",
+        kind: "entries",
+        visible: false,
+        fixed: true,
+        text: "",
+        entries: [],
+      },
+      {
+        id: "projects",
+        title: "项目经历",
+        kind: "entries",
+        visible: true,
+        fixed: true,
+        text: "",
+        entries: isAgent ? createAgentProjectEntries() : createBackendProjectEntries(),
+      },
+      {
+        id: "honors",
+        title: "荣誉证书",
+        kind: "text",
+        visible: true,
+        fixed: true,
+        text: "- 全国大学生计算机系统能力大赛二等奖（2025）\n- 浙江大学优秀学生奖学金（2023–2025）",
+        entries: [],
+      },
+    ],
+  };
+}
+
+function createAgentProjectEntries(): ResumeEntry[] {
+  return [
     {
-      id: "summary",
-      title: "自我评价",
-      kind: "text",
-      visible: true,
-      fixed: true,
-      text: "专注 **AI Agent 工程化** 与可靠后端，擅长把模糊需求拆成可验证的状态、工具和接口；重视可观测性、自动化测试与清晰表达。",
-      entries: [],
+      id: "project-dify-agent",
+      title: "Dify · LLM 应用开发平台",
+      subtitle: "项目 Owner｜Python / TypeScript / Flask / Celery",
+      startDate: "2023.04",
+      endDate: "至今",
+      location: "github.com/langgenius/dify",
+      details: "- 主导产品与架构，将模型接入、Prompt IDE、RAG、Agent 与可视化 Workflow 收敛为统一的 LLM 应用开发平台。\n- 设计基于 DAG 的工作流运行时，覆盖条件分支、变量传递、工具调用、异常路径和流式输出，使复杂 Agent 链路可以逐节点调试。\n- 建立模型供应商与工具插件抽象，统一 LLM、Embedding、Rerank 接口，让 Agent 能组合知识库、HTTP API 与自定义工具。\n- 打通文档解析、分段、索引、混合检索、重排与引用返回链路，并补齐运行日志、Trace 和回归评测。",
     },
     {
-      id: "skills",
-      title: "专业技能",
-      kind: "text",
-      visible: true,
-      fixed: true,
-      text: "- **编程语言：** Python、TypeScript、Go\n- **AI 工程：** LLM Agent、RAG、MCP、评测与可观测性\n- **后端系统：** FastAPI、PostgreSQL、Redis、Docker\n- **工程效率：** GitHub Actions、自动化测试、性能分析与故障演练",
-      entries: [],
+      id: "project-milvus-agent",
+      title: "Milvus · 云原生向量数据库",
+      subtitle: "项目 Owner｜Go / C++ / Kubernetes / etcd",
+      startDate: "2022.01",
+      endDate: "至今",
+      location: "github.com/milvus-io/milvus",
+      details: "- 面向 RAG 与 Agent 记忆场景规划向量数据模型，支持稠密、稀疏和多向量检索，并组合标量过滤与混合搜索。\n- 设计 Access、Coordinator、Worker、Storage 四层架构，将查询、写入、索引和持久化解耦，支持计算节点独立扩缩容。\n- 以 WAL、Growing / Sealed Segment、Compaction 和索引构建串联实时写入到历史查询的数据生命周期。\n- 提供 REST 与多语言 SDK 接入方式，使 Dify 等上层应用可直接构建可扩展的知识库检索链路。",
+    },
+  ];
+}
+
+function createBackendProjectEntries(): ResumeEntry[] {
+  return [
+    {
+      id: "project-dify-backend",
+      title: "Dify · LLM 应用开发平台",
+      subtitle: "项目 Owner｜Python / Flask / Celery / PostgreSQL / Redis",
+      startDate: "2023.04",
+      endDate: "至今",
+      location: "github.com/langgenius/dify",
+      details: "- 主导多租户应用后端，划分 Web API、异步 Worker、插件与模型运行时边界，支持云端、VPC 和自托管部署。\n- 基于 Celery 与 Redis 承载文档处理、索引和工作流等长任务，设计任务状态、重试、取消与失败回收，避免请求线程被阻塞。\n- 统一应用、数据集、会话与凭据的数据模型及权限校验，通过流式事件向前端持续返回模型输出与节点状态。\n- 建立结构化日志、运行 Trace、回归测试和容器化交付流程，使跨 API、队列、模型与数据库的故障可以回放定位。",
     },
     {
-      id: "work",
-      title: "工作经历",
-      kind: "entries",
-      visible: true,
-      fixed: true,
-      text: "",
-      entries: [
-        {
-          id: "work-example",
-          title: "示例科技",
-          subtitle: "AI 工程师",
-          startDate: "2024.07",
-          endDate: "至今",
-          location: "上海",
-          details: "1. 设计企业知识助手的状态化 Agent 流程，拆分规划、工具调用和结果校验节点。\n2. 建立 **工具轨迹** 和错误分类，使复杂问题能够被复现和定位。\n3. 编写离线评测集和回归脚本，将版本验收从 2 天缩短到 3 小时。",
-        },
-        {
-          id: "work-platform",
-          title: "云启智能",
-          subtitle: "后端工程师",
-          startDate: "2022.07",
-          endDate: "2024.06",
-          location: "杭州",
-          details: "- 负责异步任务平台的 API、队列与状态机设计，支撑日均 120 万次任务调度。\n- 建立 OpenTelemetry 追踪与分级告警，将核心故障平均定位时间缩短 **45%**。\n- 推进幂等键、重试预算与灰度发布规范，连续两个季度无重大生产事故。",
-        },
-      ],
+      id: "project-milvus-backend",
+      title: "Milvus · 云原生向量数据库",
+      subtitle: "项目 Owner｜Go / C++ / gRPC / Kubernetes / etcd",
+      startDate: "2022.01",
+      endDate: "至今",
+      location: "github.com/milvus-io/milvus",
+      details: "- 主导存算分离架构，将无状态 Proxy、集群 Coordinator、Streaming / Query / Data Node 与对象存储拆分为可独立扩缩容组件。\n- 设计 WAL 驱动的实时写入链路和 Segment 生命周期，协调持久化、Compaction、索引构建与节点故障后的数据恢复。\n- 采用 MPP 查询执行与多级结果归并，由 Proxy 聚合 Streaming Node 和 Query Node 结果，兼顾实时数据与历史数据检索。\n- 使用 etcd 保存元数据、服务发现和健康状态，通过 Kubernetes 调度、负载均衡与副本迁移提升集群弹性。",
     },
-    {
-      id: "internship",
-      title: "实习经历",
-      kind: "entries",
-      visible: true,
-      fixed: true,
-      text: "",
-      entries: [
-        {
-          id: "internship-example",
-          title: "星河实验室",
-          subtitle: "研发实习生",
-          startDate: "2021.07",
-          endDate: "2021.12",
-          location: "上海",
-          details: "- 开发数据清洗与质量检查流水线，覆盖 30+ 数据源和 80 条校验规则。\n- 为关键作业补齐测试和运行手册，使每周人工排查时间减少约 6 小时。\n- 参与代码评审与发布值班，熟悉从需求拆分到上线复盘的完整流程。",
-        },
-      ],
-    },
-    {
-      id: "projects",
-      title: "项目经历",
-      kind: "entries",
-      visible: true,
-      fixed: true,
-      text: "",
-      entries: [
-        {
-          id: "project-resume",
-          title: "开源简历工作台",
-          subtitle: "核心开发者",
-          startDate: "2025.11",
-          endDate: "至今",
-          location: "",
-          details: "- 设计本地优先的结构化简历编辑器，段落内部支持 `Markdown`，并提供 A4 实时预览。\n- 规划面向 Coding Agent 的 CLI / MCP 接口，让内容与版式能够被自动化调整。\n- 使用浏览器渲染导出 PDF，并验证页数、中文文本和内容裁切。",
-        },
-        {
-          id: "project-runtime",
-          title: "可恢复 Agent 运行时",
-          subtitle: "个人项目",
-          startDate: "2025.03",
-          endDate: "2025.10",
-          location: "",
-          details: "- 实现持久化 checkpoint、工具重试与人工接管，覆盖 20+ 故障场景。\n- 通过 [可观测面板](https://example.com) 追踪每次工具调用和状态迁移。\n- 为状态升级设计兼容性测试，支持中断任务在新版本继续运行。",
-        },
-      ],
-    },
-    {
-      id: "education",
-      title: "教育背景",
-      kind: "entries",
-      visible: true,
-      fixed: true,
-      text: "",
-      entries: [
-        {
-          id: "education-example",
-          title: "同济大学",
-          subtitle: "软件工程 · 工学学士",
-          startDate: "2020.09",
-          endDate: "2024.06",
-          location: "上海",
-          details: "- GPA 3.7 / 4.0，专业前 10%\n- 主修分布式系统、数据库系统、软件工程与编译原理",
-        },
-      ],
-    },
-    {
-      id: "honors",
-      title: "荣誉证书",
-      kind: "text",
-      visible: true,
-      fixed: true,
-      text: "- 全国大学生软件创新大赛一等奖（2023）\n- AWS Certified Solutions Architect – Associate（2024）\n- 校级优秀毕业设计（2024）\n- 连续两年获得专业奖学金（2022–2023）",
-      entries: [],
-    },
-  ],
-};
+  ];
+}
 
 export function ResumeEditor() {
   const [resume, setResumeState] = useState<ResumeDocument>(DEFAULT_RESUME);
@@ -251,6 +272,7 @@ export function ResumeEditor() {
   const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
   const [editorExpanded, setEditorExpanded] = useState(true);
   const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
+  const [activeShowcase, setActiveShowcase] = useState<ResumeCaseId | null>("agent");
   const resumeRef = useRef<ResumeDocument>(DEFAULT_RESUME);
   const historyRef = useRef<{ past: ResumeDocument[]; future: ResumeDocument[] }>({ past: [], future: [] });
   const measureRef = useRef<HTMLDivElement>(null);
@@ -265,6 +287,7 @@ export function ResumeEditor() {
     resumeRef.current = next;
     setResumeState(next);
     setHistoryStatus({ canUndo: true, canRedo: false });
+    setActiveShowcase(null);
   }, []);
 
   const undoResume = useCallback(() => {
@@ -274,6 +297,7 @@ export function ResumeEditor() {
     resumeRef.current = previous;
     setResumeState(previous);
     setHistoryStatus({ canUndo: historyRef.current.past.length > 0, canRedo: true });
+    setActiveShowcase(null);
   }, []);
 
   const redoResume = useCallback(() => {
@@ -283,6 +307,7 @@ export function ResumeEditor() {
     resumeRef.current = next;
     setResumeState(next);
     setHistoryStatus({ canUndo: true, canRedo: historyRef.current.future.length > 0 });
+    setActiveShowcase(null);
   }, []);
 
   const activeTemplate = resume.presentation.activeTemplate;
@@ -322,6 +347,7 @@ export function ResumeEditor() {
           resumeRef.current = loadedResume;
           setResumeState(loadedResume);
           setHistoryStatus({ canUndo: false, canRedo: false });
+          setActiveShowcase(null);
         }
       } catch {
         setNotice("本地草稿无法读取，已载入示例内容。");
@@ -467,6 +493,13 @@ export function ResumeEditor() {
     setEditorExpanded(true);
   };
 
+  const loadShowcase = (caseId: ResumeCaseId) => {
+    commitResume(cloneResume(SHOWCASE_RESUMES[caseId]));
+    setActiveShowcase(caseId);
+    setActiveEditorTarget(HEADER_BLOCK_ID);
+    setNotice(`已载入${RESUME_CASE_META[caseId].label}演示，可撤回恢复之前的草稿。`);
+  };
+
   const updateEntry = (sectionId: string, entryId: string, patch: Partial<ResumeEntry>) => {
     commitResume((current) => ({
       ...current,
@@ -521,6 +554,8 @@ export function ResumeEditor() {
             <h1>AI Resume</h1>
           </div>
         </div>
+
+        <ShowcaseSwitcher activeCase={activeShowcase} onSelect={loadShowcase} />
 
         <div className="app-actions">
           <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
@@ -624,6 +659,32 @@ export function ResumeEditor() {
 
       {notice && <div className="toast" role="status">{notice}</div>}
     </main>
+  );
+}
+
+function ShowcaseSwitcher({ activeCase, onSelect }: {
+  activeCase: ResumeCaseId | null;
+  onSelect: (caseId: ResumeCaseId) => void;
+}) {
+  return (
+    <div className="showcase-switcher" role="group" aria-label="简历案例速览">
+      <span className="showcase-label"><b>案例速览</b><small>虚构候选人 · 真实开源项目</small></span>
+      <div className="showcase-options">
+        {RESUME_CASE_IDS.map((caseId) => (
+          <button
+            key={caseId}
+            type="button"
+            aria-pressed={activeCase === caseId}
+            data-active={activeCase === caseId ? "true" : "false"}
+            title={RESUME_CASE_META[caseId].description}
+            onClick={() => onSelect(caseId)}
+          >
+            <span aria-hidden="true">{caseId === "agent" ? "✦" : "⌘"}</span>
+            {RESUME_CASE_META[caseId].label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1331,6 +1392,7 @@ async function fileToDataUrl(file: File) {
 
 function numberOr(value: unknown, fallback: number) { return typeof value === "number" && Number.isFinite(value) ? value : fallback; }
 function clamp(value: number, minimum: number, maximum: number) { return Math.min(maximum, Math.max(minimum, value)); }
+function cloneResume(resume: ResumeDocument): ResumeDocument { return JSON.parse(JSON.stringify(resume)) as ResumeDocument; }
 function makeId(prefix: string) { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
 const mmToPx = (millimeters: number) => millimeters * 96 / 25.4;
 const slugify = (value: string) => value.trim().replace(/\s+/g, "-").replace(/[\\/:*?"<>|]/g, "") || "resume";

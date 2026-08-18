@@ -66,6 +66,50 @@ button { color: inherit; }
   letter-spacing: .16em;
 }
 .brand-lockup h1 { margin: 0; color: var(--ink); font-size: 17px; letter-spacing: -.02em; }
+.showcase-switcher {
+  min-width: 0;
+  margin-inline: auto;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #d9e0ea;
+  border-radius: 10px;
+  background: #f1f4f8;
+}
+.showcase-label {
+  padding: 0 6px 0 7px;
+  display: grid;
+  gap: 1px;
+  white-space: nowrap;
+}
+.showcase-label b { color: var(--ink); font-size: 10px; letter-spacing: .04em; }
+.showcase-label small { color: #7c8899; font-size: 8px; }
+.showcase-options { display: flex; gap: 3px; }
+.showcase-options button {
+  min-height: 34px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #56647a;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.showcase-options button:hover { color: var(--accent); background: rgba(255,255,255,.7); }
+.showcase-options button[data-active="true"] {
+  border-color: #c9d9ef;
+  background: white;
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(21, 51, 88, .08);
+}
+.showcase-options button span { font-size: 12px; line-height: 1; }
 .app-actions { gap: 7px; }
 .save-state { margin-right: 3px; gap: 8px; color: var(--muted); font-size: 11px; }
 .save-state span {
@@ -666,6 +710,7 @@ button { color: inherit; }
 
 @media (max-width: 1050px) {
   .app-bar { position: relative; flex-wrap: wrap; padding-block: 13px; }
+  .showcase-switcher { order: 3; width: 100%; justify-content: center; }
   .module-track { justify-content: flex-start; }
   .app-actions { flex-wrap: wrap; justify-content: flex-end; }
   .save-state { display: none; }
@@ -678,6 +723,7 @@ button { color: inherit; }
 @media (max-width: 680px) {
   .app-bar { padding-inline: 16px; }
   .app-actions { width: 100%; justify-content: flex-start; }
+  .showcase-switcher { justify-content: flex-start; overflow-x: auto; }
   .preview-stage { padding: 26px 16px 40px; }
   .module-track { padding-inline: 10px; }
   .module-tab { min-width: 88px; padding-inline: 10px; }
