@@ -7,7 +7,8 @@ import { resolveSkillSource, templateRoot } from "./paths.mjs";
 
 const VERSION = "0.1.0";
 const DEFAULT_RESUME_PATH = "resume/resume.json";
-const UNDERFILLED_PAGE_THRESHOLD = 75;
+const UNDERFILLED_PAGE_THRESHOLD = 90;
+const TARGET_PAGE_UTILIZATION = 95;
 
 export async function run(argv, io = process) {
   if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
@@ -133,6 +134,8 @@ async function browserCommand(format, input, options, io) {
   if (lastPageUtilization < UNDERFILLED_PAGE_THRESHOLD) {
     const pageLabel = renderResult.pageCount === 1 ? "The resume" : "The last page";
     io.stdout.write(`Warning: ${pageLabel} appears underfilled (below ${UNDERFILLED_PAGE_THRESHOLD}%). Add evidence-backed content or relax the layout before delivery.\n`);
+  } else if (lastPageUtilization < TARGET_PAGE_UTILIZATION) {
+    io.stdout.write(`Notice: page utilization is below the ${TARGET_PAGE_UTILIZATION}% target. Inspect the remaining whitespace before delivery.\n`);
   }
   if (format === "png") {
     io.stdout.write("Inspect this image visually before changing content or layout.\n");

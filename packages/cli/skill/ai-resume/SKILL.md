@@ -27,9 +27,9 @@ Use the local material bank as the source of truth and `resume.json` as the edit
 
 1. Run `ai-resume render <file> --out <preview.png>`.
 2. Read the reported page utilization, then open and inspect the rendered PNG with native visual ability. Check page count, clipping, density, hierarchy, awkward wrapping, whitespace, alignment, and whether the strongest evidence is easy to find.
-3. Treat utilization below 75% as an underfill warning, not an automatic failure. Prefer adding evidence-backed project context, ownership decisions, implementation details, quality controls, and outcomes. If the facts are already complete, relax the layout with a readable font size, line height, spacing, or margins. Never pad the page with repetition or unsupported claims.
+3. Treat utilization below 90% as an underfill warning, not an automatic failure. Prefer adding evidence-backed project context, ownership decisions, implementation details, quality controls, and outcomes. If the facts are already complete, relax the layout with a readable font size, line height, spacing, or margins. Never pad the page with repetition or unsupported claims.
 4. Decide what to change. Prefer removing weak or redundant content and tightening language before shrinking type. You may switch `presentation.activeTemplate` between `numbered-rail`, `classic-burgundy`, and `campus-navy`. Adjust `fontSize`, `lineHeight`, `sectionGap`, `marginX`, or `marginY` under `presentation.layouts[activeTemplate]` only when the visual result remains comfortably readable.
-5. Render and inspect again. Aim for roughly 80–95% utilization on a one-page resume, but let visual quality and factual strength override the number. Do not claim a sound one-page result merely because validation succeeds or the CLI reports a page count.
+5. Render and inspect again. Aim for 95–100% utilization on a one-page resume. Treat 90–94% as requiring another whitespace review, while letting visual quality and factual strength override the number. Do not claim a sound one-page result merely because validation succeeds or the CLI reports a page count.
 6. Never search for or invoke `fit`, `fit 1`, `compress`, or another automatic one-page command; this workflow intentionally does not provide one.
 
 ## Export and verify
