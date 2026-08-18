@@ -5,6 +5,7 @@ import { ResumeEditor, createBlankResume, createShowcaseResume, type ResumeDocum
 
 const LIBRARY_KEY = "ai-resume.library.v1";
 const LEGACY_DOCUMENT_KEY = "ai-resume.structured.v3";
+const WORKSPACE_API = "/api/workspace";
 
 type SavedResume = {
   id: string;
@@ -29,6 +30,7 @@ export function ResumeWorkspace() {
   ));
   const [cliMode, setCliMode] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [materials, setMaterials] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -49,38 +51,43 @@ export function ResumeWorkspace() {
   }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get("editor") === "1") {
-          setCliMode(true);
-          return;
-        }
-
-        const stored = localStorage.getItem(LIBRARY_KEY);
-        let nextRecords = stored ? normalizeLibrary(JSON.parse(stored)) : [];
-        if (nextRecords.length === 0) {
-          const legacy = localStorage.getItem(LEGACY_DOCUMENT_KEY);
-          if (legacy) {
-            const resume = JSON.parse(legacy) as ResumeDocument;
-            nextRecords = [createRecord(resume, resume.header.name || "迁移的简历")];
-            localStorage.setItem(LIBRARY_KEY, JSON.stringify(nextRecords));
-          }
-        }
-        setRecords(nextRecords);
-      } catch {
-        setRecords([]);
-      } finally {
+    let cancelled = false;
+    const loadWorkspace = async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("editor") === "1") {
+        setCliMode(true);
         setHydrated(true);
+        return;
       }
-    });
-    return () => window.cancelAnimationFrame(frame);
+
+      try {
+        const response = await fetch(WORKSPACE_API, { cache: "no-store" });
+        if (!response.ok) throw new Error(`workspace API ${response.status}`);
+        const workspace = await response.json() as { resumes?: unknown; materials?: string };
+        let nextRecords = normalizeLibrary(workspace.resumes);
+        const legacy = readLegacyLibrary();
+        if (legacy.length > 0 && nextRecords.length === 0) {
+          nextRecords = legacy;
+          await saveWorkspace(nextRecords, typeof workspace.materials === "string" ? workspace.materials : "");
+        }
+        if (!cancelled) {
+          setRecords(nextRecords);
+          setMaterials(typeof workspace.materials === "string" ? workspace.materials : "");
+        }
+      } catch {
+        if (!cancelled) setRecords(readLegacyLibrary());
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    };
+    void loadWorkspace();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     if (!hydrated || cliMode) return;
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(records));
-  }, [cliMode, hydrated, records]);
+    void saveWorkspace(records, materials);
+  }, [cliMode, hydrated, materials, records]);
 
   const activeRecord = useMemo(
     () => records.find((record) => record.id === activeId) ?? null,
@@ -277,6 +284,36 @@ function normalizeLibrary(value: unknown): SavedResume[] {
     title: item.title || item.resume.title || item.resume.header.name || "未命名简历",
     resume: { ...item.resume, title: item.resume.title || item.title || item.resume.header.name || "未命名简历" },
   }));
+}
+
+function readLegacyLibrary(): SavedResume[] {
+  try {
+    const stored = localStorage.getItem(LIBRARY_KEY);
+    let records = stored ? normalizeLibrary(JSON.parse(stored)) : [];
+    if (records.length === 0) {
+      const legacy = localStorage.getItem(LEGACY_DOCUMENT_KEY);
+      if (legacy) {
+        const resume = JSON.parse(legacy) as ResumeDocument;
+        records = [createRecord(resume, resume.header.name || "迁移的简历")];
+      }
+    }
+    return records;
+  } catch {
+    return [];
+  }
+}
+
+async function saveWorkspace(resumes: SavedResume[], materials: string) {
+  try {
+    await fetch(WORKSPACE_API, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version: 1, resumes, materials }),
+    });
+  } catch {
+    // Keep the browser fallback usable when the static page is opened without the local server.
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(resumes));
+  }
 }
 
 function formatUpdatedAt(value: string) {

@@ -7,3 +7,4 @@ dist/
 .wrangler/
 .env*
 packages/cli/web/
+.ai-resume-data/
