@@ -74,6 +74,7 @@ type ResumeSection = {
 
 export type ResumeDocument = {
   version: 3;
+  title: string;
   header: HeaderData;
   presentation: {
     activeTemplate: TemplateId;
@@ -121,6 +122,7 @@ export function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
 
   return {
     version: 3,
+    title: isAgent ? "AI Agent 工程师求职简历" : "Go 后端工程师求职简历",
     header: {
       name: "陈知远",
       role: isAgent ? "AI AGENT 工程师｜2026 届校招" : "GO 后端工程师｜2026 届校招",
@@ -216,6 +218,7 @@ export function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
 export function createBlankResume(): ResumeDocument {
   return {
     version: 3,
+    title: "未命名简历",
     header: {
       name: "你的姓名",
       role: "目标职位",
@@ -465,6 +468,10 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     commitResume((current) => ({ ...current, header: { ...current.header, [key]: value } }));
   };
 
+  const updateResumeTitle = (value: string) => {
+    commitResume((current) => ({ ...current, title: value }));
+  };
+
   const updatePhoto = (photo: PhotoData | null) => {
     commitResume((current) => ({ ...current, header: { ...current.header, photo } }));
   };
@@ -657,7 +664,7 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
             <div className="structured-editor">
               <div className="content-editor">
               {resolvedEditorTarget === HEADER_BLOCK_ID && (
-                <HeaderEditor header={resume.header} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
+                <HeaderEditor title={resume.title} header={resume.header} onTitleChange={updateResumeTitle} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
               )}
 
               {activeEditorSection && (
@@ -804,8 +811,10 @@ function LayoutEditor({ activeTemplate, layout, onTemplateChange, onChange }: {
   );
 }
 
-function HeaderEditor({ header, onChange, onPhotoChange, onPhotoError }: {
+function HeaderEditor({ title, header, onTitleChange, onChange, onPhotoChange, onPhotoError }: {
+  title: string;
   header: HeaderData;
+  onTitleChange: (value: string) => void;
   onChange: (key: HeaderTextKey, value: string) => void;
   onPhotoChange: (photo: PhotoData | null) => void;
   onPhotoError: (message: string) => void;
@@ -827,6 +836,7 @@ function HeaderEditor({ header, onChange, onPhotoChange, onPhotoError }: {
   return (
     <section className="editor-card basic-card">
       <div className="field-grid header-fields">
+        <TextField label="简历名称" value={title} onChange={onTitleChange} />
         <TextField label="姓名" value={header.name} onChange={(value) => onChange("name", value)} />
         <TextField label="求职方向" value={header.role} onChange={(value) => onChange("role", value)} />
         <TextField label="电话" value={header.phone} onChange={(value) => onChange("phone", value)} />
@@ -1250,7 +1260,7 @@ function parseLegacyMarkdown(markdown: string, layout: LayoutData): ResumeDocume
     else currentSection.text = currentSection.text ? `${currentSection.text}\n${line}` : line;
   });
 
-  return { version: 3, header, presentation: createPresentation(DEFAULT_TEMPLATE_ID, layout), sections };
+  return { version: 3, title: header.name || "未命名简历", header, presentation: createPresentation(DEFAULT_TEMPLATE_ID, layout), sections };
 }
 
 function parseEntryHeading(value: string, index: number): ResumeEntry {
@@ -1297,6 +1307,7 @@ function normalizeResume(value: unknown): ResumeDocument {
   if (candidate.layout) layouts[activeTemplate] = normalizeLayout(candidate.layout);
   return {
     version: 3,
+    title: String(candidate.title || candidate.header.name || "未命名简历"),
     header: {
       name: String(candidate.header.name || ""), role: String(candidate.header.role || ""), phone: String(candidate.header.phone || ""),
       email: String(candidate.header.email || ""), location: String(candidate.header.location || ""), website: String(candidate.header.website || ""),

@@ -90,7 +90,7 @@ export function ResumeWorkspace() {
   const updateActiveResume = useCallback((resume: ResumeDocument) => {
     setRecords((current) => current.map((record) => record.id === activeId ? {
       ...record,
-      title: resume.header.name || record.title || "未命名简历",
+      title: resume.title || record.title || "未命名简历",
       role: resume.header.role || "未设置求职方向",
       updatedAt: new Date().toISOString(),
       resume,
@@ -261,7 +261,7 @@ export function ResumeWorkspace() {
 function createRecord(resume: ResumeDocument, fallbackTitle: string): SavedResume {
   return {
     id: `resume-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    title: resume.header.name || fallbackTitle,
+    title: resume.title || fallbackTitle,
     role: resume.header.role || "未设置求职方向",
     updatedAt: new Date().toISOString(),
     resume,
@@ -272,7 +272,11 @@ function normalizeLibrary(value: unknown): SavedResume[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is SavedResume => Boolean(
     item && typeof item === "object" && "id" in item && "resume" in item && "updatedAt" in item,
-  ));
+  )).map((item) => ({
+    ...item,
+    title: item.title || item.resume.title || item.resume.header.name || "未命名简历",
+    resume: { ...item.resume, title: item.resume.title || item.title || item.resume.header.name || "未命名简历" },
+  }));
 }
 
 function formatUpdatedAt(value: string) {

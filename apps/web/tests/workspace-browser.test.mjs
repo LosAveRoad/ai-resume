@@ -26,6 +26,7 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   await page.waitForSelector('[data-preview-ready="true"]');
   assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
   assert.equal(await page.getByText("案例速览", { exact: true }).count(), 0);
+  await page.getByLabel("简历名称").fill("我的后端求职简历");
 
   await page.goBack({ waitUntil: "networkidle" });
   assert.equal(await page.locator(".resume-card").count(), 1);
@@ -34,7 +35,7 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
 
   await page.getByRole("link", { name: "返回 AI Resume 首页" }).click();
   assert.equal(await page.locator(".resume-card").count(), 1);
-  assert.match(await page.locator(".resume-card").innerText(), /未命名简历/);
+  assert.match(await page.locator(".resume-card").innerText(), /我的后端求职简历/);
 
   await page.reload({ waitUntil: "networkidle" });
   assert.equal(await page.locator(".resume-card").count(), 1);
