@@ -247,9 +247,9 @@ export function ResumeEditor() {
   const [oversizedSection, setOversizedSection] = useState(false);
   const [notice, setNotice] = useState("");
   const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
+  const [editorExpanded, setEditorExpanded] = useState(true);
   const measureRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
-  const editorRef = useRef<HTMLElement>(null);
 
   const activeTemplate = resume.presentation.activeTemplate;
   const activeLayout = resume.presentation.layouts[activeTemplate];
@@ -403,7 +403,7 @@ export function ResumeEditor() {
 
   const selectEditorTarget = (target: string) => {
     setActiveEditorTarget(target);
-    window.requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    setEditorExpanded(true);
   };
 
   const updateEntry = (sectionId: string, entryId: string, patch: Partial<ResumeEntry>) => {
@@ -537,14 +537,25 @@ export function ResumeEditor() {
         </div>
       </section>
 
-      <ModuleNavigator
-        headerName={resume.header.name}
-        sections={resume.sections}
-        activeTarget={resolvedEditorTarget}
-        onSelect={selectEditorTarget}
-      />
+      <section className={`floating-editor${editorExpanded ? " is-expanded" : " is-collapsed"}`} aria-label="浮动编辑栏">
+        <button
+          className="floating-editor-toggle"
+          type="button"
+          aria-expanded={editorExpanded}
+          aria-label={editorExpanded ? "收起编辑栏" : "展开编辑栏"}
+          onClick={() => setEditorExpanded((expanded) => !expanded)}
+        >
+          <span aria-hidden="true">{editorExpanded ? "⌄" : "⌃"}</span>
+        </button>
 
-      <section className="editor-zone" ref={editorRef}>
+        <ModuleNavigator
+          headerName={resume.header.name}
+          sections={resume.sections}
+          activeTarget={resolvedEditorTarget}
+          onSelect={selectEditorTarget}
+        />
+
+        {editorExpanded && <section className="editor-zone">
         <div className="editor-shell">
           <header className="editor-heading">
             <div>
@@ -619,6 +630,7 @@ export function ResumeEditor() {
             </aside>
           </div>
         </div>
+        </section>}
       </section>
 
       {notice && <div className="toast" role="status">{notice}</div>}

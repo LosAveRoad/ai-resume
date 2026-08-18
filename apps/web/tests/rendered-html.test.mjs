@@ -22,6 +22,8 @@ test("server-renders the local resume editor shell", async () => {
   assert.match(html, /<title>AI Resume · 本地简历工作台<\/title>/i);
   assert.match(html, /AI Resume/);
   assert.match(html, /简历预览/);
+  assert.match(html, /浮动编辑栏/);
+  assert.match(html, /收起编辑栏/);
   assert.match(html, /简历模块导航/);
   assert.match(html, /当前只编辑一个模块/);
   assert.match(html, /导出 PDF/);
