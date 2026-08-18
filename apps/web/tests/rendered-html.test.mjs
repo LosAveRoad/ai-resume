@@ -13,7 +13,7 @@ async function render() {
   );
 }
 
-test("server-renders the local resume editor shell", async () => {
+test("server-renders the local resume workspace home", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
@@ -21,23 +21,13 @@ test("server-renders the local resume editor shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>AI Resume · 本地简历工作台<\/title>/i);
   assert.match(html, /AI Resume/);
-  assert.match(html, /简历预览/);
-  assert.match(html, /浮动编辑栏/);
-  assert.match(html, /收起编辑栏/);
-  assert.match(html, /简历模块导航/);
-  assert.match(html, /页面样式/);
-  assert.ok(html.indexOf("页面样式") < html.indexOf("基本信息"));
-  assert.match(html, /导出 PDF/);
-  assert.match(html, /简历案例速览/);
-  assert.match(html, /Agent 方向/);
-  assert.match(html, /后端方向/);
-  assert.match(html, /Dify · LLM 应用开发平台/);
-  assert.match(html, /Milvus · 云原生向量数据库/);
-  assert.match(html, /项目 Owner/);
-  assert.match(html, /撤回/);
-  assert.match(html, /反撤回/);
-  assert.match(html, /<ol class="compact-list">/);
-  assert.doesNotMatch(html, />导入<|>导出 MD<|>JSON</);
-  assert.match(html, /上传并裁剪照片/);
+  assert.match(html, /可验证的工程流程/);
+  assert.match(html, /我的简历/);
+  assert.match(html, /新建简历/);
+  assert.match(html, /空白简历/);
+  assert.match(html, /Agent 工程师/);
+  assert.match(html, /后端工程师/);
+  assert.match(html, /95%/);
+  assert.match(html, /数据保存在本地/);
   assert.doesNotMatch(html, /SkeletonPreview|react-loading-skeleton|codex-preview/);
 });

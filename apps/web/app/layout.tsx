@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   title: "AI Resume · 本地简历工作台",
   description: "本地优先、结构化编辑、可靠导出的开源简历工作台。",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
   },
 };
 
