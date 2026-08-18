@@ -13,8 +13,8 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
   t.after(() => rm(root, { recursive: true, force: true }));
 
   assertSuccess(runCli(["init", root]));
-  const input = join(root, "resume", "resume.json");
-  const pdf = join(root, "resume", "output", "resume.pdf");
+  const input = join(root, "airesume", "resumes", "resume-main.json");
+  const pdf = join(root, "airesume", "output", "resume.pdf");
 
   const resume = JSON.parse(await readFile(input, "utf8"));
   const templateIds = ["numbered-rail", "classic-burgundy", "campus-navy"];

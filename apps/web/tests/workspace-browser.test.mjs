@@ -20,7 +20,11 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   await waitForServer(`http://127.0.0.1:${port}`);
   const workspaceResponse = await fetch(`http://127.0.0.1:${port}/api/workspace`);
   assert.equal(workspaceResponse.ok, true);
-  assert.deepEqual(await workspaceResponse.json(), { version: 1, resumes: [], materials: "" });
+  const emptyWorkspace = await workspaceResponse.json();
+  assert.deepEqual(emptyWorkspace.version, 1);
+  assert.deepEqual(emptyWorkspace.resumes, []);
+  assert.equal(emptyWorkspace.materials, "");
+  assert.match(emptyWorkspace.materialsRevision, /^sha256:/);
 
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
@@ -35,17 +39,21 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   assert.equal(await page.getByText("案例速览", { exact: true }).count(), 0);
   await page.getByLabel("简历名称").fill("我的后端求职简历");
 
-  await page.goBack({ waitUntil: "load" });
-  assert.equal(await page.locator(".resume-card").count(), 1);
-  await page.goForward({ waitUntil: "load" });
-  assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
-
   await page.getByRole("link", { name: "返回 AI Resume 首页" }).click();
   assert.equal(await page.locator(".resume-card").count(), 1);
   assert.match(await page.locator(".resume-card").innerText(), /我的后端求职简历/);
 
+  await page.getByRole("button", { name: "继续编辑" }).click();
+  await page.waitForSelector('[data-preview-ready="true"]');
+  assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
+
+  await page.getByRole("button", { name: "返回首页" }).click();
+  assert.equal(await page.locator(".resume-card").count(), 1);
+  await page.getByLabel("素材库 Markdown").fill("# 测试素材\n\n- 真实项目指标");
+  await page.waitForTimeout(600);
   await page.reload({ waitUntil: "load" });
   assert.equal(await page.locator(".resume-card").count(), 1);
+  assert.match(await page.getByLabel("素材库 Markdown").inputValue(), /真实项目指标/);
 });
 
 async function waitForServer(url) {

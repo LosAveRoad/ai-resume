@@ -1,12 +1,21 @@
-import { cp, mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
 import { inspectResume, formatValidationErrors, readResume } from "./schema.mjs";
 import { installSkill } from "./install-skill.mjs";
 import { renderResume, runEditorServer } from "./browser.mjs";
 import { resolveSkillSource, templateRoot } from "./paths.mjs";
+import {
+  cloneResumeRecord,
+  readResumeRecord,
+  readWorkspace,
+  resolveWorkspacePath,
+  ensureWorkspace,
+  writeMaterials,
+  writeResumeRecord,
+} from "./workspace.mjs";
 
 const VERSION = "0.1.0";
-const DEFAULT_RESUME_PATH = "resume/resume.json";
+const DEFAULT_RESUME_PATH = "airesume/resumes/resume-main.json";
 const UNDERFILLED_PAGE_THRESHOLD = 90;
 const TARGET_PAGE_UTILIZATION = 95;
 
@@ -39,7 +48,9 @@ export async function run(argv, io = process) {
     case "inspect":
       return inspectCommand(positionals[0] ?? DEFAULT_RESUME_PATH, options.json, io);
     case "dev":
-      return devCommand(options.port, options["data-dir"], io);
+      return devCommand(options.port, options.workspace ?? options["data-dir"], io);
+    case "workspace":
+      return workspaceCommand(positionals, options, io);
     case "render":
       return browserCommand("png", positionals[0] ?? DEFAULT_RESUME_PATH, options, io);
     case "export":
@@ -55,23 +66,27 @@ export async function run(argv, io = process) {
 }
 
 async function initProject(directory, force, io) {
-  const root = resolve(directory);
-  const resumeDirectory = resolve(root, "resume");
-  const outputDirectory = resolve(resumeDirectory, "output");
-  await mkdir(outputDirectory, { recursive: true });
-  const copyOptions = force ? { force: true } : { errorOnExist: true, force: false };
+  const requestedRoot = resolve(directory);
+  const root = basename(requestedRoot).toLowerCase() === "airesume" ? requestedRoot : resolve(requestedRoot, "airesume");
+  const resumeDirectory = resolve(root, "resumes");
+  const resumePath = resolve(resumeDirectory, "resume-main.json");
+  const materialsPath = resolve(root, "materials.md");
   try {
-    await cp(resolve(templateRoot, "resume.json"), resolve(resumeDirectory, "resume.json"), copyOptions);
-    await cp(resolve(templateRoot, "materials.md"), resolve(resumeDirectory, "materials.md"), copyOptions);
-  } catch (error) {
-    if (error && (error.code === "ERR_FS_CP_EEXIST" || error.code === "EEXIST")) {
-      throw new Error(`resume files already exist under ${resumeDirectory}; pass --force to replace them`);
+    if (!force) {
+      await readFile(resumePath);
+      throw new Error(`resume files already exist under ${root}; pass --force to replace them`);
     }
-    throw error;
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
   }
-  io.stdout.write(`Initialized local resume workspace at ${resumeDirectory}\n`);
-  io.stdout.write(`  material bank: ${resolve(resumeDirectory, "materials.md")}\n`);
-  io.stdout.write(`  resume data:   ${resolve(resumeDirectory, "resume.json")}\n`);
+  await ensureWorkspace(root);
+  const resume = JSON.parse(await readFile(resolve(templateRoot, "resume.json"), "utf8"));
+  const materials = await readFile(resolve(templateRoot, "materials.md"), "utf8");
+  await writeResumeRecord(root, "resume-main", resume, { allowCreate: true });
+  await writeMaterials(root, materials, { allowCreate: true });
+  io.stdout.write(`Initialized local resume workspace at ${root}\n`);
+  io.stdout.write(`  material bank: ${materialsPath}\n`);
+  io.stdout.write(`  resume data:   ${resumePath}\n`);
   return 0;
 }
 
@@ -143,6 +158,53 @@ async function browserCommand(format, input, options, io) {
   return 0;
 }
 
+async function workspaceCommand(positionals, options, io) {
+  const [subcommand = "list", id] = positionals;
+  const workspaceRoot = resolveWorkspacePath(options.workspace);
+  if (subcommand === "list") {
+    const workspace = await readWorkspace(workspaceRoot);
+    if (options.json) io.stdout.write(`${JSON.stringify(workspace.resumes, null, 2)}\n`);
+    else for (const record of workspace.resumes) io.stdout.write(`${record.id}\t${record.title}\t${record.role}\n`);
+    return 0;
+  }
+  if (subcommand === "clone") {
+    if (!id) throw new Error("workspace clone requires a resume id");
+    const record = await cloneResumeRecord(workspaceRoot, id, { title: options.title });
+    io.stdout.write(`Created resume: ${record.id}\n`);
+    io.stdout.write(`Title: ${record.title}\n`);
+    return 0;
+  }
+  if (subcommand === "inspect" || subcommand === "render" || subcommand === "export") {
+    if (!id) throw new Error(`workspace ${subcommand} requires a resume id`);
+    const record = await readResumeRecord(workspaceRoot, id);
+    if (subcommand === "inspect") {
+      const inspection = inspectResume(record.resume, `airesume/resumes/${id}.json`);
+      io.stdout.write(options.json ? `${JSON.stringify(inspection, null, 2)}\n` : `${inspection.name || "Unnamed resume"} — ${inspection.role || "No target role"}\n`);
+      return 0;
+    }
+    const format = subcommand === "render" ? "png" : "pdf";
+    const output = resolve(options.out ?? resolve(workspaceRoot, "output", id, format === "png" ? "preview.png" : "resume.pdf"));
+    return reportBrowserOutput(format, record.resume, output, options, io);
+  }
+  throw new Error(`unknown workspace subcommand ${JSON.stringify(subcommand)}`);
+}
+
+async function reportBrowserOutput(format, resume, output, options, io) {
+  const renderResult = await renderResume({
+    resume,
+    output,
+    url: options.url,
+    port: parsePort(options.port, 4173),
+    format,
+  });
+  const label = format === "png" ? "Preview" : "PDF";
+  io.stdout.write(`${label} written to ${renderResult.output}\n`);
+  io.stdout.write(`Rendered page count: ${renderResult.pageCount}\n`);
+  io.stdout.write(`Page utilization: ${renderResult.pageUtilization.map((value) => `${value}%`).join(", ")}\n`);
+  if (format === "png") io.stdout.write("Inspect this image visually before changing content or layout.\n");
+  return 0;
+}
+
 async function installSkillCommand(options, io) {
   const destinations = await installSkill({
     agent: options.agent ?? "all",
@@ -194,9 +256,14 @@ Usage:
   ai-resume init [directory] [--force]
   ai-resume validate [resume.json] [--json]
   ai-resume inspect [resume.json] [--json]
-  ai-resume dev [--port 3000] [--data-dir .ai-resume-data]
+  ai-resume dev [--port 3000] [--workspace ./airesume]
   ai-resume render [resume.json] [--out resume.png] [--url URL] [--port 4173]
   ai-resume export [resume.json] [--out resume.pdf] [--url URL] [--port 4173]
+  ai-resume workspace list [--workspace ./airesume] [--json]
+  ai-resume workspace clone <id> [--title TITLE] [--workspace ./airesume]
+  ai-resume workspace inspect <id> [--workspace ./airesume] [--json]
+  ai-resume workspace render <id> [--out preview.png] [--workspace ./airesume]
+  ai-resume workspace export <id> [--out resume.pdf] [--workspace ./airesume]
   ai-resume install-skill [--agent all|codex|claude-code|deepseek-harness]
                           [--scope project|user] [--root directory] [--force]
   ai-resume skill-path

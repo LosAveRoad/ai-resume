@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ResumeEditor, createBlankResume, createShowcaseResume, type ResumeDocument } from "./ResumeEditor";
 
-const LIBRARY_KEY = "ai-resume.library.v1";
-const LEGACY_DOCUMENT_KEY = "ai-resume.structured.v3";
+const RESUMES_API = "/api/resumes";
+const MATERIALS_API = "/api/materials";
 const WORKSPACE_API = "/api/workspace";
 
 type SavedResume = {
@@ -12,8 +12,11 @@ type SavedResume = {
   title: string;
   role: string;
   updatedAt: string;
+  revision?: string;
   resume: ResumeDocument;
 };
+
+type SaveState = "loading" | "saved" | "saving" | "error" | "conflict";
 
 type StarterKind = "blank" | "agent" | "backend";
 
@@ -29,8 +32,19 @@ export function ResumeWorkspace() {
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("resume")
   ));
   const [cliMode, setCliMode] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
   const [materials, setMaterials] = useState("");
+  const [materialsRevision, setMaterialsRevision] = useState<string | undefined>();
+  const [saveState, setSaveState] = useState<SaveState>("loading");
+  const [materialsSaveState, setMaterialsSaveState] = useState<SaveState>("saved");
+  const recordsRef = useRef<SavedResume[]>([]);
+  const saveTimersRef = useRef(new Map<string, number>());
+  const materialsTimerRef = useRef<number | undefined>();
+
+  const setRecordsAndRef = useCallback((next: SavedResume[] | ((current: SavedResume[]) => SavedResume[])) => {
+    const resolved = typeof next === "function" ? next(recordsRef.current) : next;
+    recordsRef.current = resolved;
+    setRecords(resolved);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -56,53 +70,98 @@ export function ResumeWorkspace() {
       const params = new URLSearchParams(window.location.search);
       if (params.get("editor") === "1") {
         setCliMode(true);
-        setHydrated(true);
         return;
       }
 
       try {
         const response = await fetch(WORKSPACE_API, { cache: "no-store" });
         if (!response.ok) throw new Error(`workspace API ${response.status}`);
-        const workspace = await response.json() as { resumes?: unknown; materials?: string };
-        let nextRecords = normalizeLibrary(workspace.resumes);
-        const legacy = readLegacyLibrary();
-        if (legacy.length > 0 && nextRecords.length === 0) {
-          nextRecords = legacy;
-          await saveWorkspace(nextRecords, typeof workspace.materials === "string" ? workspace.materials : "");
-        }
+        const workspace = await response.json() as { resumes?: unknown; materials?: string; materialsRevision?: string };
+        const nextRecords = normalizeLibrary(workspace.resumes);
         if (!cancelled) {
-          setRecords(nextRecords);
+          setRecordsAndRef(nextRecords);
           setMaterials(typeof workspace.materials === "string" ? workspace.materials : "");
+          setMaterialsRevision(typeof workspace.materialsRevision === "string" ? workspace.materialsRevision : undefined);
+          setSaveState("saved");
         }
       } catch {
-        if (!cancelled) setRecords(readLegacyLibrary());
-      } finally {
-        if (!cancelled) setHydrated(true);
+        if (!cancelled) setSaveState("error");
       }
     };
     void loadWorkspace();
     return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated || cliMode) return;
-    void saveWorkspace(records, materials);
-  }, [cliMode, hydrated, materials, records]);
+  }, [setRecordsAndRef]);
 
   const activeRecord = useMemo(
     () => records.find((record) => record.id === activeId) ?? null,
     [activeId, records],
   );
 
+  const queueResumeSave = useCallback((resumeId: string, resume: ResumeDocument) => {
+    const existing = saveTimersRef.current.get(resumeId);
+    if (existing !== undefined) window.clearTimeout(existing);
+    setSaveState("saving");
+    const timer = window.setTimeout(async () => {
+      const record = recordsRef.current.find((candidate) => candidate.id === resumeId);
+      if (!record) return;
+      try {
+        const response = await fetch(`${RESUMES_API}/${encodeURIComponent(resumeId)}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ resume, revision: record.revision }),
+        });
+        if (response.status === 409) {
+          setSaveState("conflict");
+          return;
+        }
+        if (!response.ok) throw new Error(`resume save ${response.status}`);
+        const saved = await response.json() as SavedResume;
+        setRecordsAndRef((current) => current.map((candidate) => candidate.id === resumeId ? saved : candidate));
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    }, 350);
+    saveTimersRef.current.set(resumeId, timer);
+  }, [setRecordsAndRef]);
+
   const updateActiveResume = useCallback((resume: ResumeDocument) => {
-    setRecords((current) => current.map((record) => record.id === activeId ? {
+    const current = recordsRef.current;
+    const nextRecords = current.map((record) => record.id === activeId ? {
       ...record,
       title: resume.title || record.title || "未命名简历",
       role: resume.header.role || "未设置求职方向",
       updatedAt: new Date().toISOString(),
       resume,
-    } : record));
-  }, [activeId]);
+    } : record);
+    setRecordsAndRef(nextRecords);
+    if (activeId) queueResumeSave(activeId, resume);
+  }, [activeId, queueResumeSave, setRecordsAndRef]);
+
+  const updateMaterials = useCallback((value: string) => {
+    setMaterials(value);
+    setMaterialsSaveState("saving");
+    if (materialsTimerRef.current !== undefined) window.clearTimeout(materialsTimerRef.current);
+    materialsTimerRef.current = window.setTimeout(async () => {
+      try {
+        const response = await fetch(MATERIALS_API, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ content: value, revision: materialsRevision }),
+        });
+        if (response.status === 409) {
+          setMaterialsSaveState("conflict");
+          return;
+        }
+        if (!response.ok) throw new Error(`materials save ${response.status}`);
+        const saved = await response.json() as { revision?: string };
+        setMaterialsRevision(saved.revision);
+        setMaterialsSaveState("saved");
+      } catch {
+        setMaterialsSaveState("error");
+      }
+    }, 400);
+  }, [materialsRevision]);
 
   const openResume = useCallback((resumeId: string) => {
     const url = new URL(window.location.href);
@@ -127,22 +186,90 @@ export function ResumeWorkspace() {
     setActiveId(null);
   }, []);
 
-  const createResume = (kind: StarterKind) => {
+  const createResume = async (kind: StarterKind) => {
     const resume = kind === "blank" ? createBlankResume() : createShowcaseResume(kind);
     if (kind === "blank") resume.header.name = "未命名简历";
-    const record = createRecord(resume, kind === "blank" ? "未命名简历" : `${kind === "agent" ? "Agent" : "后端"}方向简历`);
-    setRecords((current) => [record, ...current]);
-    openResume(record.id);
+    try {
+      const response = await fetch(RESUMES_API, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ resume }),
+      });
+      if (!response.ok) throw new Error(`resume create ${response.status}`);
+      const record = await response.json() as SavedResume;
+      setRecordsAndRef((current) => [record, ...current]);
+      setSaveState("saved");
+      openResume(record.id);
+    } catch {
+      setSaveState("error");
+    }
   };
 
-  const deleteResume = (record: SavedResume) => {
+  const deleteResume = async (record: SavedResume) => {
     if (!window.confirm(`确定删除“${record.title}”吗？此操作无法撤回。`)) return;
-    setRecords((current) => current.filter((candidate) => candidate.id !== record.id));
+    try {
+      const response = await fetch(`${RESUMES_API}/${encodeURIComponent(record.id)}`, {
+        method: "DELETE",
+        headers: record.revision ? { "if-match": record.revision } : undefined,
+      });
+      if (!response.ok) throw new Error(`resume delete ${response.status}`);
+      setRecordsAndRef((current) => current.filter((candidate) => candidate.id !== record.id));
+    } catch {
+      setSaveState("error");
+    }
   };
+
+  const cloneResume = async (record: SavedResume) => {
+    const title = window.prompt("新版本名称", `${record.title} · 新岗位`);
+    if (!title?.trim()) return;
+    try {
+      const response = await fetch(`${RESUMES_API}/${encodeURIComponent(record.id)}/clone`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: title.trim() }),
+      });
+      if (!response.ok) throw new Error(`resume clone ${response.status}`);
+      const copy = await response.json() as SavedResume;
+      setRecordsAndRef((current) => [copy, ...current]);
+      openResume(copy.id);
+    } catch {
+      setSaveState("error");
+    }
+  };
+
+  const exportActiveResume = useCallback(async () => {
+    const resumeId = activeId;
+    const record = resumeId ? recordsRef.current.find((candidate) => candidate.id === resumeId) : undefined;
+    if (!resumeId || !record) return;
+    setSaveState("saving");
+    try {
+      const response = await fetch(`${RESUMES_API}/${encodeURIComponent(resumeId)}/export`, {
+        method: "POST",
+        headers: record.revision ? { "if-match": record.revision } : undefined,
+      });
+      if (response.status === 409) {
+        setSaveState("conflict");
+        return;
+      }
+      if (!response.ok) throw new Error(`resume export ${response.status}`);
+      const blob = await response.blob();
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = `${resumeId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }, [activeId]);
 
   if (cliMode) return <ResumeEditor />;
   if (activeRecord) {
-    return <ResumeEditor key={activeRecord.id} initialResume={activeRecord.resume} onResumeChange={updateActiveResume} onBack={returnHome} />;
+    return <ResumeEditor key={activeRecord.id} initialResume={activeRecord.resume} onResumeChange={updateActiveResume} onBack={returnHome} onExport={exportActiveResume} saveState={saveState} />;
   }
 
   return (
@@ -156,6 +283,7 @@ export function ResumeWorkspace() {
         </a>
         <nav aria-label="首页导航">
           <a href="#resumes">我的简历</a>
+          <a href="#materials">素材库</a>
           <a href="#starters">新建简历</a>
           <a href="https://github.com/LosAveRoad/ai-resume">GitHub ↗</a>
         </nav>
@@ -172,7 +300,7 @@ export function ResumeWorkspace() {
           </div>
           <dl className="workspace-metrics">
             <div><dt>3</dt><dd>内置 A4 模板</dd></div>
-            <div><dt>100%</dt><dd>浏览器本地保存</dd></div>
+            <div><dt>100%</dt><dd>本地工作区保存</dd></div>
             <div><dt>CLI</dt><dd>Agent 原生工作流</dd></div>
           </dl>
         </div>
@@ -210,7 +338,7 @@ export function ResumeWorkspace() {
                     <i /><i /><i /><i />
                   </div>
                   <div className="resume-card-copy">
-                    <span className="resume-card-state"><i /> 已保存在本地</span>
+                    <span className="resume-card-state"><i /> 本地工作区</span>
                     <h3>{record.title}</h3>
                     <p>{record.role || "未设置求职方向"}</p>
                     <small>更新于 {formatUpdatedAt(record.updatedAt)}</small>
@@ -218,6 +346,7 @@ export function ResumeWorkspace() {
                 </button>
                 <div className="resume-card-actions">
                   <button type="button" onClick={() => openResume(record.id)}>继续编辑</button>
+                  <button type="button" onClick={() => cloneResume(record)}>复制版本</button>
                   <button type="button" onClick={() => deleteResume(record)} aria-label={`删除${record.title}`}>删除</button>
                 </div>
               </article>
@@ -231,6 +360,22 @@ export function ResumeWorkspace() {
             <button type="button" onClick={() => createResume("blank")}>创建第一份简历</button>
           </div>
         )}
+      </section>
+
+      <section id="materials" className="workspace-section materials-section">
+        <div className="workspace-section-heading">
+          <div><p>FACT BANK</p><h2>素材库</h2></div>
+          <span>{saveStateLabel(materialsSaveState)}</span>
+        </div>
+        <p className="materials-lead">把经历、项目、指标和链接记录在这里。Coding Agent 会把它作为事实边界，网页和 CLI 共享同一份 Markdown 文件。</p>
+        <textarea
+          aria-label="素材库 Markdown"
+          className="materials-editor"
+          value={materials}
+          onChange={(event) => updateMaterials(event.target.value)}
+          placeholder="# 我的素材\n\n- 项目：\n- 事实与指标：\n- 链接："
+          spellCheck={false}
+        />
       </section>
 
       <section id="starters" className="workspace-section starter-section">
@@ -265,55 +410,26 @@ export function ResumeWorkspace() {
   );
 }
 
-function createRecord(resume: ResumeDocument, fallbackTitle: string): SavedResume {
-  return {
-    id: `resume-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    title: resume.title || fallbackTitle,
-    role: resume.header.role || "未设置求职方向",
-    updatedAt: new Date().toISOString(),
-    resume,
-  };
-}
-
 function normalizeLibrary(value: unknown): SavedResume[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is SavedResume => Boolean(
     item && typeof item === "object" && "id" in item && "resume" in item && "updatedAt" in item,
   )).map((item) => ({
     ...item,
+    revision: typeof item.revision === "string" ? item.revision : undefined,
     title: item.title || item.resume.title || item.resume.header.name || "未命名简历",
     resume: { ...item.resume, title: item.resume.title || item.title || item.resume.header.name || "未命名简历" },
   }));
 }
 
-function readLegacyLibrary(): SavedResume[] {
-  try {
-    const stored = localStorage.getItem(LIBRARY_KEY);
-    let records = stored ? normalizeLibrary(JSON.parse(stored)) : [];
-    if (records.length === 0) {
-      const legacy = localStorage.getItem(LEGACY_DOCUMENT_KEY);
-      if (legacy) {
-        const resume = JSON.parse(legacy) as ResumeDocument;
-        records = [createRecord(resume, resume.header.name || "迁移的简历")];
-      }
-    }
-    return records;
-  } catch {
-    return [];
-  }
-}
-
-async function saveWorkspace(resumes: SavedResume[], materials: string) {
-  try {
-    await fetch(WORKSPACE_API, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ version: 1, resumes, materials }),
-    });
-  } catch {
-    // Keep the browser fallback usable when the static page is opened without the local server.
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(resumes));
-  }
+function saveStateLabel(state: SaveState) {
+  return {
+    loading: "载入中",
+    saved: "已保存到 ./airesume",
+    saving: "保存中…",
+    error: "保存失败，请检查本地服务",
+    conflict: "文件已被 Agent 修改，请重新载入",
+  }[state];
 }
 
 function formatUpdatedAt(value: string) {

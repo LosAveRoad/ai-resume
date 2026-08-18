@@ -5,6 +5,7 @@ The editor consumes JSON version 3. Keep every listed property present, even whe
 ```json
 {
   "version": 3,
+  "title": "岗位方向简历",
   "header": {
     "name": "string",
     "role": "string",
@@ -52,6 +53,8 @@ Layout ranges enforced by the CLI and editor:
 - `sectionGap`: 3–16 px
 
 `activeTemplate` must be `numbered-rail`, `classic-burgundy`, or `campus-navy`. Each template keeps its own layout values so switching away and back does not discard visual tuning. Modify the layout under `presentation.layouts[activeTemplate]` when visually refining the active template.
+
+`title` is the local workspace name for this resume variant. It is not printed as the candidate's name; `header.name` controls the printed name. Older version 3 files without `title` are migrated from `header.name` during CLI validation and workspace import.
 
 `header.photo` is either `null` or an object containing an image data URL and crop state:
 

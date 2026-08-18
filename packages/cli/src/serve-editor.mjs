@@ -1,16 +1,37 @@
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, isAbsolute, relative, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
+import {
+  cloneResumeRecord,
+  createResumeRecord,
+  deleteResumeRecord,
+  ensureWorkspace,
+  readMaterials,
+  readResumeRecord,
+  readWorkspace,
+  replaceWorkspace,
+  writeMaterials,
+  writeResumeRecord,
+  WorkspaceConflictError,
+  WorkspaceNotFoundError,
+} from "./workspace.mjs";
+import { renderResume } from "./browser.mjs";
+
+class InvalidRequestError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "InvalidRequestError";
+  }
+}
 
 const root = resolve(readArgument("--root") ?? "web");
 const port = Number(readArgument("--port") ?? 4173);
-const dataDir = resolve(readArgument("--data-dir") ?? resolve(root, "..", "..", "..", ".ai-resume-data"));
-const workspaceFile = resolve(dataDir, "workspace.json");
-const materialsFile = resolve(dataDir, "materials.md");
+const workspaceRoot = resolve(readArgument("--workspace") ?? readArgument("--data-dir") ?? resolve(process.cwd(), "airesume"));
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid port: ${port}`);
+await ensureWorkspace(workspaceRoot);
 
 const clientRoot = resolve(root, "client");
 const serverEntry = resolve(root, "server/index.js");
@@ -39,6 +60,18 @@ const server = createServer(async (incoming, outgoing) => {
       : await worker.fetch(await toRequest(incoming, url), { ASSETS: assets }, executionContext);
     await sendResponse(outgoing, response);
   } catch (error) {
+    if (error instanceof WorkspaceConflictError) {
+      await sendResponse(outgoing, jsonResponse({ error: error.message }, 409));
+      return;
+    }
+    if (error instanceof WorkspaceNotFoundError) {
+      await sendResponse(outgoing, jsonResponse({ error: error.message }, 404));
+      return;
+    }
+    if (error instanceof InvalidRequestError) {
+      await sendResponse(outgoing, jsonResponse({ error: error.message }, 400));
+      return;
+    }
     outgoing.statusCode = 500;
     outgoing.setHeader("content-type", "text/plain; charset=utf-8");
     outgoing.end(error instanceof Error ? error.stack : String(error));
@@ -80,49 +113,86 @@ async function serveAssetRequest(request) {
 }
 
 async function serveWorkspaceApi(incoming, url) {
-  if (url.pathname !== "/api/workspace") return null;
-  if (incoming.method === "GET") {
-    return jsonResponse(await readWorkspace());
+  const resumeMatch = url.pathname.match(/^\/api\/resumes\/([^/]+)$/);
+  const cloneMatch = url.pathname.match(/^\/api\/resumes\/([^/]+)\/clone$/);
+  const exportMatch = url.pathname.match(/^\/api\/resumes\/([^/]+)\/export$/);
+  if (url.pathname === "/api/workspace" && incoming.method === "GET") {
+    return jsonResponse(await readWorkspace(workspaceRoot));
   }
-  if (incoming.method !== "PUT" && incoming.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  if (url.pathname === "/api/workspace" && (incoming.method === "PUT" || incoming.method === "POST")) {
+    return jsonResponse(await parseAndReplaceWorkspace(incoming));
   }
-  const body = await readIncomingBody(incoming);
-  let candidate;
+  if (url.pathname === "/api/materials" && incoming.method === "GET") {
+    return jsonResponse(await readMaterials(workspaceRoot));
+  }
+  if (url.pathname === "/api/materials" && (incoming.method === "PUT" || incoming.method === "POST")) {
+    const body = parseJson(await readIncomingBody(incoming));
+    const content = typeof body === "string" ? body : body.content;
+    return jsonResponse(await writeMaterials(workspaceRoot, content ?? "", { expectedRevision: expectedRevision(incoming, body) }));
+  }
+  if (url.pathname === "/api/resumes" && incoming.method === "GET") {
+    const workspace = await readWorkspace(workspaceRoot);
+    return jsonResponse({ resumes: workspace.resumes });
+  }
+  if (url.pathname === "/api/resumes" && incoming.method === "POST") {
+    const body = parseJson(await readIncomingBody(incoming));
+    const resume = body?.resume && typeof body.resume === "object" ? body.resume : body;
+    return jsonResponse(await createResumeRecord(workspaceRoot, resume, { id: body?.id }));
+  }
+  if (resumeMatch && incoming.method === "GET") {
+    return jsonResponse(await readResumeRecord(workspaceRoot, decodeURIComponent(resumeMatch[1])));
+  }
+  if (resumeMatch && incoming.method === "PUT") {
+    const body = parseJson(await readIncomingBody(incoming));
+    const resume = body?.resume && typeof body.resume === "object" ? body.resume : body;
+    return jsonResponse(await writeResumeRecord(workspaceRoot, decodeURIComponent(resumeMatch[1]), resume, {
+      expectedRevision: expectedRevision(incoming, body),
+    }));
+  }
+  if (resumeMatch && incoming.method === "DELETE") {
+    await deleteResumeRecord(workspaceRoot, decodeURIComponent(resumeMatch[1]), { expectedRevision: expectedRevision(incoming) });
+    return jsonResponse({ ok: true });
+  }
+  if (exportMatch && incoming.method === "POST") {
+    const id = decodeURIComponent(exportMatch[1]);
+    const record = await readResumeRecord(workspaceRoot, id);
+    const revision = expectedRevision(incoming);
+    if (revision && revision !== record.revision) throw new WorkspaceConflictError();
+    const output = resolve(workspaceRoot, "output", id, "resume.pdf");
+    await renderResume({ resume: record.resume, output, url: `http://127.0.0.1:${port}`, format: "pdf" });
+    return new Response(await readFile(output), {
+      headers: {
+        "content-type": "application/pdf",
+        "content-disposition": `attachment; filename="${id}.pdf"`,
+        "cache-control": "no-store",
+      },
+    });
+  }
+  if (cloneMatch && incoming.method === "POST") {
+    const body = parseJson(await readIncomingBody(incoming));
+    return jsonResponse(await cloneResumeRecord(workspaceRoot, decodeURIComponent(cloneMatch[1]), { title: body?.title }));
+  }
+  if (url.pathname.startsWith("/api/")) return new Response("Not found", { status: 404 });
+  return null;
+}
+
+async function parseAndReplaceWorkspace(incoming) {
+  const body = parseJson(await readIncomingBody(incoming));
+  return replaceWorkspace(workspaceRoot, body);
+}
+
+function parseJson(body) {
   try {
-    candidate = JSON.parse(body || "{}");
+    return JSON.parse(body || "{}");
   } catch {
-    return jsonResponse({ error: "invalid JSON" }, 400);
-  }
-  const workspace = normalizeWorkspace(candidate);
-  await mkdir(dataDir, { recursive: true });
-  const temporaryFile = `${workspaceFile}.${process.pid}.tmp`;
-  await writeFile(temporaryFile, `${JSON.stringify(workspace, null, 2)}\n`, "utf8");
-  await rename(temporaryFile, workspaceFile);
-  await writeFile(materialsFile, workspace.materials, "utf8");
-  return jsonResponse(workspace);
-}
-
-async function readWorkspace() {
-  try {
-    const workspace = normalizeWorkspace(JSON.parse(await readFile(workspaceFile, "utf8")));
-    if (!workspace.materials) {
-      try { workspace.materials = await readFile(materialsFile, "utf8"); } catch {}
-    }
-    return workspace;
-  } catch (error) {
-    if (error?.code !== "ENOENT") process.stderr.write(`workspace read failed: ${error}\n`);
-    try { return { version: 1, resumes: [], materials: await readFile(materialsFile, "utf8") }; } catch { return { version: 1, resumes: [], materials: "" }; }
+    throw new InvalidRequestError("invalid JSON");
   }
 }
 
-function normalizeWorkspace(candidate) {
-  const resumes = Array.isArray(candidate?.resumes) ? candidate.resumes : [];
-  return {
-    version: 1,
-    resumes,
-    materials: typeof candidate?.materials === "string" ? candidate.materials : "",
-  };
+function expectedRevision(incoming, body) {
+  const header = incoming.headers["if-match"];
+  const value = body && typeof body === "object" && !Array.isArray(body) ? body.revision : undefined;
+  return value ?? (typeof header === "string" ? header.replace(/^W\//, "").replace(/^\"|\"$/g, "") : undefined);
 }
 
 async function readIncomingBody(incoming) {

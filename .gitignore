@@ -8,3 +8,4 @@ dist/
 .env*
 packages/cli/web/
 .ai-resume-data/
+airesume/

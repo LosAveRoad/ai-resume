@@ -25,10 +25,10 @@
 大多数简历工具把内容锁在在线编辑器里，把“适配一页”简化成自动缩小字号。AI Resume 采用不同的边界：
 
 - **内容是结构化数据。** 素材库使用 Markdown，成稿使用可验证的 JSON。
-- **数据默认留在本地。** localhost 服务把简历库和素材落盘到 `.ai-resume-data/`，不同浏览器访问同一个本地服务即可共享。
+- **数据默认留在本地。** localhost 只是网页访问本地文件的桥梁；简历和素材统一落盘到当前项目的 `./airesume/`，不同浏览器访问同一个本地服务即可共享。
 - **Agent 负责判断。** CLI 提供校验、渲染、利用率诊断和导出原子能力，不提供黑盒 `fit 1`。
 - **视觉结果必须检查。** Agent 查看真实 A4 PNG，判断密度、裁切、层级和留白后再迭代。
-- **PDF 导出可重复。** 使用 Playwright 与打印样式生成确定性 A4 PDF。
+- **PDF 导出可重复。** CLI 通过 Playwright 与打印样式生成确定性 A4 PDF。
 
 ## 核心能力
 
@@ -67,7 +67,7 @@ npm run cli -- dev
 - Agent 工程师示例
 - 后端工程师示例
 
-首页通过 localhost 的 `/api/workspace` 读写共享工作区。默认数据目录是项目根目录下的 `.ai-resume-data/`，其中包含 `workspace.json` 和 `materials.md`；不同浏览器访问同一个端口会看到同一份简历库。旧版本浏览器里的 `localStorage` 数据会在共享库为空时自动迁移一次。需要版本控制或跨环境使用时，请采用下面的 CLI 文件工作流。
+首页通过 localhost API 读写共享工作区。默认数据目录是当前目录下的 `./airesume/`：`materials.md` 保存素材库，`resumes/<id>.json` 保存每份简历，`output/<id>/` 保存 PNG 和 PDF。浏览器不会把正式数据保存到 `localStorage`；旧版本的 `.ai-resume-data/` 会在首次启动时无损迁移。
 
 ## CLI 与 Agent 工作流
 
@@ -84,25 +84,26 @@ npm link --workspace @ai-resume/cli
 ai-resume --help
 ```
 
-### 1. 初始化文件工作区
+### 1. 初始化本地工作区
 
 ```bash
 ai-resume init .
 ```
 
 ```text
-resume/
-├── materials.md   # 真实、可核验的原始素材
-├── resume.json    # 当前结构化简历
-└── output/        # PNG / PDF 输出
+airesume/
+├── materials.md                 # 真实、可核验的原始素材
+├── resumes/<resume-id>.json     # 每份岗位版本独立存储
+└── output/<resume-id>/          # PNG / PDF 输出
 ```
 
 ### 2. 校验、检查和渲染
 
 ```bash
-ai-resume validate resume/resume.json
-ai-resume inspect resume/resume.json
-ai-resume render resume/resume.json --out resume/output/preview.png
+ai-resume workspace list
+ai-resume validate airesume/resumes/resume-main.json
+ai-resume inspect airesume/resumes/resume-main.json
+ai-resume workspace render resume-main --out airesume/output/resume-main/preview.png
 ```
 
 `render` 会输出页数和每页利用率：
@@ -124,7 +125,7 @@ Page utilization: 95%
 ### 3. 导出 PDF
 
 ```bash
-ai-resume export resume/resume.json --out resume/output/resume.pdf
+ai-resume workspace export resume-main --out airesume/output/resume-main/resume.pdf
 ```
 
 导出前应打开 PNG 进行视觉检查；导出后再次检查 PDF 字体、链接、换行和页面边界。
@@ -135,9 +136,14 @@ ai-resume export resume/resume.json --out resume/output/resume.pdf
 ai-resume init [directory]
 ai-resume validate [resume.json]
 ai-resume inspect [resume.json]
-ai-resume dev [--port 3000]
+ai-resume dev [--port 3000] [--workspace ./airesume]
 ai-resume render [resume.json] [--out preview.png]
 ai-resume export [resume.json] [--out resume.pdf]
+ai-resume workspace list [--workspace ./airesume]
+ai-resume workspace clone <id> [--title TITLE] [--workspace ./airesume]
+ai-resume workspace inspect <id> [--workspace ./airesume]
+ai-resume workspace render <id> [--out preview.png] [--workspace ./airesume]
+ai-resume workspace export <id> [--out resume.pdf] [--workspace ./airesume]
 ai-resume install-skill --agent <agent> --scope <scope>
 ai-resume skill-path
 ```
@@ -173,6 +179,7 @@ Skill 会约束 Agent：以素材库为事实边界、为不同岗位创建独�
 ```json
 {
   "version": 3,
+  "title": "岗位方向简历",
   "header": {},
   "presentation": {
     "activeTemplate": "numbered-rail",
@@ -206,7 +213,7 @@ ai-resume/
 └── docs/images/                      # README 产品截图
 ```
 
-Web 端使用 React 19 与 vinext；CLI 使用 Node.js 与 Playwright。浏览器首页和 CLI 文件工作流相互独立：前者适合日常可视化编辑，后者适合 Agent、Git 和自动化流程。
+Web 端使用 React 19 与 vinext；CLI 使用 Node.js 与 Playwright。浏览器首页和 CLI 通过同一个 `./airesume/` 工作区协作：前者适合日常可视化编辑，后者适合 Agent、视觉检查和确定性导出。
 
 ## 开发
 

@@ -23,11 +23,6 @@ import {
   type TemplateId,
 } from "./templates";
 
-const STRUCTURED_KEY = "ai-resume.structured.v3";
-const LEGACY_STRUCTURED_KEY = "ai-resume.structured.v2";
-const LEGACY_DOCUMENT_KEY = "ai-resume.document.v1";
-const LEGACY_MARKDOWN_KEY = "ai-resume.markdown.v1";
-const LEGACY_LAYOUT_KEY = "ai-resume.layout.v1";
 const HEADER_BLOCK_ID = "__header";
 const ADD_MODULE_ID = "__add-module";
 const PAGE_STYLE_ID = "__page-style";
@@ -84,24 +79,16 @@ export type ResumeDocument = {
 };
 
 type ResumeCaseId = typeof RESUME_CASE_IDS[number];
+type SaveState = "loading" | "saved" | "saving" | "error" | "conflict";
 
 declare global {
   interface Window {
     __RESUME_READY__?: boolean;
+    __AI_RESUME_RENDER_DATA__?: unknown;
   }
 }
 
 const DEFAULT_LAYOUT: LayoutData = RESUME_TEMPLATES[DEFAULT_TEMPLATE_ID].defaultLayout;
-
-const FIXED_SECTION_IDS: Record<string, string> = {
-  "教育背景": "education",
-  "专业技能": "skills",
-  "工作经历": "work",
-  "实习经历": "internship",
-  "项目经历": "projects",
-  "荣誉证书": "honors",
-  "自我评价": "summary",
-};
 
 const SHOWCASE_RESUMES = Object.fromEntries(
   RESUME_CASE_IDS.map((caseId) => [caseId, createShowcaseResume(caseId)]),
@@ -291,10 +278,12 @@ function createBackendProjectEntries(): ResumeEntry[] {
   ];
 }
 
-export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
+export function ResumeEditor({ initialResume, onResumeChange, onBack, onExport, saveState }: {
   initialResume?: ResumeDocument;
   onResumeChange?: (resume: ResumeDocument) => void;
   onBack?: () => void;
+  onExport?: () => void | Promise<void>;
+  saveState?: SaveState;
 } = {}) {
   const startingResume = initialResume ? cloneResume(initialResume) : DEFAULT_RESUME;
   const managedResumeRef = useRef(Boolean(initialResume));
@@ -359,23 +348,8 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     }
     const frame = window.requestAnimationFrame(() => {
       try {
-        const structured = localStorage.getItem(STRUCTURED_KEY);
-        const legacyStructured = localStorage.getItem(LEGACY_STRUCTURED_KEY);
-        const legacyDocument = localStorage.getItem(LEGACY_DOCUMENT_KEY);
-        const legacyMarkdown = localStorage.getItem(LEGACY_MARKDOWN_KEY);
-        const legacyLayout = localStorage.getItem(LEGACY_LAYOUT_KEY);
         let loadedResume: ResumeDocument | null = null;
-
-        if (structured) {
-          loadedResume = normalizeResume(JSON.parse(structured));
-        } else if (legacyStructured) {
-          loadedResume = normalizeResume(JSON.parse(legacyStructured));
-        } else if (legacyDocument) {
-          loadedResume = normalizeResume(JSON.parse(legacyDocument));
-        } else if (legacyMarkdown) {
-          const layout = legacyLayout ? normalizeLayout(JSON.parse(legacyLayout)) : DEFAULT_LAYOUT;
-          loadedResume = parseLegacyMarkdown(legacyMarkdown, layout);
-        }
+        if (window.__AI_RESUME_RENDER_DATA__) loadedResume = normalizeResume(window.__AI_RESUME_RENDER_DATA__);
         if (loadedResume) {
           historyRef.current = { past: [], future: [] };
           resumeRef.current = loadedResume;
@@ -393,12 +367,7 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
 
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      if (managedResumeRef.current) onResumeChange?.(resume);
-      else localStorage.setItem(STRUCTURED_KEY, JSON.stringify(resume));
-    } catch {
-      window.setTimeout(() => setNotice("本地存储空间不足，请更换尺寸更小的照片。"), 0);
-    }
+    if (managedResumeRef.current) onResumeChange?.(resume);
   }, [hydrated, onResumeChange, resume]);
 
   useEffect(() => {
@@ -581,6 +550,7 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
         <Link
           className="brand-lockup"
           href="/"
+          prefetch={false}
           aria-label="返回 AI Resume 首页"
           onClick={(event) => {
             if (!onBack) return;
@@ -599,10 +569,10 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
 
         <div className="app-actions">
           {onBack && <button className="ghost-button" type="button" onClick={onBack}>返回首页</button>}
-          <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
+          <div className={`save-state save-state-${saveState ?? (hydrated ? "saved" : "loading")}`}><span aria-hidden="true" />{saveStateLabel(saveState ?? (hydrated ? "saved" : "loading"))}</div>
           <button className="ghost-button history-button" type="button" title="撤回（Ctrl/Cmd+Z）" disabled={!historyStatus.canUndo} onClick={undoResume}><span aria-hidden="true">↶</span> 撤回</button>
           <button className="ghost-button history-button" type="button" title="反撤回（Ctrl/Cmd+Shift+Z）" disabled={!historyStatus.canRedo} onClick={redoResume}><span aria-hidden="true">↷</span> 反撤回</button>
-          <button className="primary-button" type="button" onClick={() => window.print()}>导出 PDF</button>
+          <button className="primary-button" type="button" onClick={() => onExport ? void onExport() : window.print()}>导出 PDF</button>
         </div>
       </header>
 
@@ -1218,62 +1188,6 @@ function RangeField({ label, value, min, max, step, suffix, onChange }: { label:
   );
 }
 
-function parseLegacyMarkdown(markdown: string, layout: LayoutData): ResumeDocument {
-  const header: HeaderData = { name: "", role: "", phone: "", email: "", location: "", website: "", photo: null };
-  const sections: ResumeSection[] = [];
-  let currentSection: ResumeSection | null = null;
-  let currentEntry: ResumeEntry | null = null;
-  let reachedSections = false;
-
-  markdown.split(/\r?\n/).forEach((rawLine) => {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("<!--")) return;
-    const nameMatch = line.match(/^#\s+(.+)$/);
-    if (nameMatch && !line.startsWith("##")) { header.name = stripInlineMarkdown(nameMatch[1]); return; }
-    const sectionMatch = line.match(/^##\s+(.+)$/);
-    if (sectionMatch && !line.startsWith("###")) {
-      reachedSections = true;
-      const title = stripInlineMarkdown(sectionMatch[1]);
-      currentSection = { id: uniqueSectionId(title, sections), title, kind: "text", visible: true, fixed: Boolean(FIXED_SECTION_IDS[title]), text: "", entries: [] };
-      sections.push(currentSection);
-      currentEntry = null;
-      return;
-    }
-    const entryMatch = line.match(/^###\s+(.+)$/);
-    if (entryMatch && currentSection) {
-      currentSection.kind = "entries";
-      currentEntry = parseEntryHeading(entryMatch[1], currentSection.entries.length);
-      currentSection.entries.push(currentEntry);
-      return;
-    }
-    if (!reachedSections) {
-      if (line.startsWith(">")) header.role = line.replace(/^>\s*/, "");
-      else if (line.includes("|")) parseContacts(line, header);
-      return;
-    }
-    if (!currentSection) return;
-    if (currentEntry) currentEntry.details = currentEntry.details ? `${currentEntry.details}\n${line}` : line;
-    else currentSection.text = currentSection.text ? `${currentSection.text}\n${line}` : line;
-  });
-
-  return { version: 3, title: header.name || "未命名简历", header, presentation: createPresentation(DEFAULT_TEMPLATE_ID, layout), sections };
-}
-
-function parseEntryHeading(value: string, index: number): ResumeEntry {
-  const parts = value.split(/\s+\|\s+/).map((part) => part.trim());
-  const [startDate, endDate] = splitDateRange(parts[2] || "");
-  return { id: `entry-${index}-${slugify(parts[0] || "item")}`, title: parts[0] || "未命名条目", subtitle: parts[1] || "", startDate, endDate, location: parts[3] || "", details: "" };
-}
-
-function parseContacts(value: string, header: HeaderData) {
-  value.split("|").map((item) => item.trim()).filter(Boolean).forEach((item) => {
-    if (item.includes("@")) header.email = item;
-    else if (/https?:\/\/|github\.|\.com\b|\.dev\b|\.io\b/i.test(item)) header.website = item;
-    else if (/\d{5,}/.test(item.replace(/\s/g, ""))) header.phone = item;
-    else if (!header.location) header.location = item;
-  });
-}
-
 function renderInlineMarkdown(value: string): ReactNode[] {
   const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   return value.split(pattern).filter(Boolean).map((part, index) => {
@@ -1364,23 +1278,6 @@ function moveItem<T extends { id: string }>(items: T[], id: string, direction: -
   return next;
 }
 
-function uniqueSectionId(title: string, sections: ResumeSection[]) {
-  const base = FIXED_SECTION_IDS[title] || `custom-${slugify(title)}`;
-  let id = base;
-  let suffix = 2;
-  while (sections.some((section) => section.id === id)) id = `${base}-${suffix++}`;
-  return id;
-}
-
-function splitDateRange(value: string): [string, string] {
-  const parts = value.split(/\s+(?:-|–|—|~|至)\s+/).map((part) => part.trim()).filter(Boolean);
-  return parts.length >= 2 ? [parts[0], parts.slice(1).join(" ")] : [value, ""];
-}
-
-function stripInlineMarkdown(value: string) {
-  return value.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
-}
-
 function isSafeLink(value: string) { return /^(https?:\/\/|mailto:)/i.test(value); }
 
 async function fileToDataUrl(file: File) {
@@ -1412,6 +1309,14 @@ async function fileToDataUrl(file: File) {
 function numberOr(value: unknown, fallback: number) { return typeof value === "number" && Number.isFinite(value) ? value : fallback; }
 function clamp(value: number, minimum: number, maximum: number) { return Math.min(maximum, Math.max(minimum, value)); }
 function cloneResume(resume: ResumeDocument): ResumeDocument { return JSON.parse(JSON.stringify(resume)) as ResumeDocument; }
+function saveStateLabel(state: SaveState) {
+  return {
+    loading: "正在载入",
+    saved: "已保存到 ./airesume",
+    saving: "保存中…",
+    error: "保存失败",
+    conflict: "Agent 已修改，请重新载入",
+  }[state];
+}
 function makeId(prefix: string) { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
 const mmToPx = (millimeters: number) => millimeters * 96 / 25.4;
-const slugify = (value: string) => value.trim().replace(/\s+/g, "-").replace(/[\\/:*?"<>|]/g, "") || "resume";

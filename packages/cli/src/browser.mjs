@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { resolveEditorRuntime } from "./paths.mjs";
 
-const STORAGE_KEY = "ai-resume.structured.v3";
-
 export async function renderResume({ resume, output, url, port = 4173, format }) {
   const outputPath = resolve(output);
   await mkdir(dirname(outputPath), { recursive: true });
@@ -20,10 +18,10 @@ export async function renderResume({ resume, output, url, port = 4173, format })
       colorScheme: "light",
     });
     const page = await context.newPage();
-    await page.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), {
-      key: STORAGE_KEY,
-      value: resume,
-    });
+    // The render input is a one-shot in-memory value. It is deliberately not
+    // written to browser localStorage; ./airesume remains the only canonical
+    // persistence layer for workspace records.
+    await page.addInitScript((value) => { window.__AI_RESUME_RENDER_DATA__ = value; }, resume);
     const editorUrl = new URL(server.url);
     editorUrl.searchParams.set("editor", "1");
     await page.goto(editorUrl.href, { waitUntil: "networkidle" });

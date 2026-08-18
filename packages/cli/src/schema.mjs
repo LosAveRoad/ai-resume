@@ -24,7 +24,7 @@ export async function readResume(input, cwd = process.cwd()) {
 
   let resume;
   try {
-    resume = JSON.parse(source);
+    resume = migrateResume(JSON.parse(source));
   } catch (error) {
     throw new Error(`invalid JSON in ${file}: ${error.message}`);
   }
@@ -35,6 +35,7 @@ export function validateResume(value) {
   const errors = [];
   if (!isObject(value)) return ["$: expected an object"];
   if (value.version !== 3) errors.push("$.version: expected 3");
+  requireNonEmptyString(value.title, "$.title", errors);
 
   if (!isObject(value.header)) {
     errors.push("$.header: expected an object");
@@ -185,4 +186,13 @@ function requireNonEmptyString(value, path, errors) {
 
 function requireBoolean(value, path, errors) {
   if (typeof value !== "boolean") errors.push(`${path}: expected a boolean`);
+}
+
+function migrateResume(value) {
+  if (!isObject(value)) return value;
+  if (typeof value.title === "string" && value.title.trim()) return value;
+  return {
+    ...value,
+    title: typeof value.header?.name === "string" && value.header.name.trim() ? value.header.name : "未命名简历",
+  };
 }

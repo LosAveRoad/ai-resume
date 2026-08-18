@@ -7,11 +7,15 @@ export const repositoryRoot = resolve(packageRoot, "../..");
 export const templateRoot = resolve(packageRoot, "templates");
 
 export function resolveEditorRuntime() {
+  const sourceRoot = resolve(repositoryRoot, "apps/web");
+  const sourceDist = resolve(sourceRoot, "dist");
+  if (existsSync(resolve(sourceDist, "server/index.js"))) {
+    return { kind: "production", root: sourceDist };
+  }
   const packagedRoot = resolve(packageRoot, "web");
   if (existsSync(resolve(packagedRoot, "server/index.js"))) {
     return { kind: "production", root: packagedRoot };
   }
-  const sourceRoot = resolve(repositoryRoot, "apps/web");
   if (existsSync(resolve(sourceRoot, "package.json"))) {
     return { kind: "development", root: sourceRoot };
   }

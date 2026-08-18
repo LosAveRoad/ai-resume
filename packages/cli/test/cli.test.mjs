@@ -23,14 +23,22 @@ test("init, validate, inspect, and invalid-data reporting", async (t) => {
 
   const initialized = runCli(["init", root]);
   assert.equal(initialized.status, 0, initialized.stderr);
-  const resumePath = join(root, "resume", "resume.json");
-  const materialsPath = join(root, "resume", "materials.md");
+  const resumePath = join(root, "airesume", "resumes", "resume-main.json");
+  const materialsPath = join(root, "airesume", "materials.md");
   assert.equal(existsSync(resumePath), true);
   assert.equal(existsSync(materialsPath), true);
 
   const validated = runCli(["validate", resumePath, "--json"]);
   assert.equal(validated.status, 0, validated.stderr);
   assert.equal(JSON.parse(validated.stdout).valid, true);
+
+  const workspaceRoot = join(root, "airesume");
+  const listed = runCli(["workspace", "list", "--workspace", workspaceRoot]);
+  assert.equal(listed.status, 0, listed.stderr);
+  assert.match(listed.stdout, /resume-main/);
+  const cloned = runCli(["workspace", "clone", "resume-main", "--workspace", workspaceRoot, "--title", "后端岗位版本"]);
+  assert.equal(cloned.status, 0, cloned.stderr);
+  assert.match(cloned.stdout, /后端岗位版本/);
 
   const inspected = runCli(["inspect", resumePath, "--json"]);
   assert.equal(inspected.status, 0, inspected.stderr);
