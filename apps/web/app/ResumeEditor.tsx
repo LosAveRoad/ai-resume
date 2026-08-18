@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Fragment,
   useCallback,
@@ -82,11 +83,6 @@ export type ResumeDocument = {
 };
 
 type ResumeCaseId = typeof RESUME_CASE_IDS[number];
-
-const RESUME_CASE_META: Record<ResumeCaseId, { label: string; description: string }> = {
-  agent: { label: "Agent 方向", description: "工作流、RAG、工具调用与评测" },
-  backend: { label: "后端方向", description: "服务治理、异步任务与分布式存储" },
-};
 
 declare global {
   interface Window {
@@ -307,7 +303,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
   const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
   const [editorExpanded, setEditorExpanded] = useState(true);
   const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
-  const [activeShowcase, setActiveShowcase] = useState<ResumeCaseId | null>(initialResume ? null : "agent");
   const resumeRef = useRef<ResumeDocument>(startingResume);
   const historyRef = useRef<{ past: ResumeDocument[]; future: ResumeDocument[] }>({ past: [], future: [] });
   const measureRef = useRef<HTMLDivElement>(null);
@@ -533,13 +528,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     setEditorExpanded(true);
   };
 
-  const loadShowcase = (caseId: ResumeCaseId) => {
-    commitResume(cloneResume(SHOWCASE_RESUMES[caseId]));
-    setActiveShowcase(caseId);
-    setActiveEditorTarget(HEADER_BLOCK_ID);
-    setNotice(`已载入${RESUME_CASE_META[caseId].label}演示，可撤回恢复之前的草稿。`);
-  };
-
   const updateEntry = (sectionId: string, entryId: string, patch: Partial<ResumeEntry>) => {
     commitResume((current) => ({
       ...current,
@@ -587,7 +575,16 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
   return (
     <main className="app-shell" data-editor-expanded={editorExpanded ? "true" : "false"}>
       <header className="app-bar">
-        <div className="brand-lockup">
+        <Link
+          className="brand-lockup"
+          href="/"
+          aria-label="返回 AI Resume 首页"
+          onClick={(event) => {
+            if (!onBack) return;
+            event.preventDefault();
+            onBack();
+          }}
+        >
           {/* Generated with OpenAI ImageGen, stored locally for deterministic offline use. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="brand-logo" src="/ai-resume-logo.png" alt="" aria-hidden="true" />
@@ -595,9 +592,7 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
             <p className="eyebrow">LOCAL FIRST</p>
             <h1>AI Resume</h1>
           </div>
-        </div>
-
-        <ShowcaseSwitcher activeCase={activeShowcase} onSelect={loadShowcase} />
+        </Link>
 
         <div className="app-actions">
           {onBack && <button className="ghost-button" type="button" onClick={onBack}>返回首页</button>}
@@ -702,32 +697,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
 
       {notice && <div className="toast" role="status">{notice}</div>}
     </main>
-  );
-}
-
-function ShowcaseSwitcher({ activeCase, onSelect }: {
-  activeCase: ResumeCaseId | null;
-  onSelect: (caseId: ResumeCaseId) => void;
-}) {
-  return (
-    <div className="showcase-switcher" role="group" aria-label="简历案例速览">
-      <span className="showcase-label"><b>案例速览</b><small>虚构候选人 · 真实开源项目</small></span>
-      <div className="showcase-options">
-        {RESUME_CASE_IDS.map((caseId) => (
-          <button
-            key={caseId}
-            type="button"
-            aria-pressed={activeCase === caseId}
-            data-active={activeCase === caseId ? "true" : "false"}
-            title={RESUME_CASE_META[caseId].description}
-            onClick={() => onSelect(caseId)}
-          >
-            <span aria-hidden="true">{caseId === "agent" ? "✦" : "⌘"}</span>
-            {RESUME_CASE_META[caseId].label}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 

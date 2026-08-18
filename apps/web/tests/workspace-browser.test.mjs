@@ -25,8 +25,9 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   await page.getByRole("button", { name: "创建第一份简历" }).click();
   await page.waitForSelector('[data-preview-ready="true"]');
   assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
+  assert.equal(await page.getByText("案例速览", { exact: true }).count(), 0);
 
-  await page.getByRole("button", { name: "返回首页" }).click();
+  await page.getByRole("link", { name: "返回 AI Resume 首页" }).click();
   assert.equal(await page.locator(".resume-card").count(), 1);
   assert.match(await page.locator(".resume-card").innerText(), /未命名简历/);
 
