@@ -193,8 +193,11 @@ export function ResumeWorkspace() {
             <button type="button" className={`starter-card starter-${starter.tone}`} key={starter.kind} onClick={() => createResume(starter.kind)}>
               <span className="starter-index">0{index + 1}</span>
               <div className="starter-sheet"><i /><i /><i /><i /></div>
-              <div><h3>{starter.label}</h3><p>{starter.description}</p></div>
-              <b>开始创建 →</b>
+              <div className="starter-copy">
+                <h3>{starter.label}</h3>
+                <p>{starter.description}</p>
+                <span className="starter-action">开始创建 →</span>
+              </div>
             </button>
           ))}
         </div>
