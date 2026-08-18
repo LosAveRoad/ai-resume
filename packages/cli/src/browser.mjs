@@ -31,9 +31,10 @@ export async function renderResume({ resume, output, url, port = 4173, format })
 
     const pageCount = await page.locator(".page-wrap .resume-page").count();
     if (pageCount === 0) throw new Error("editor rendered no resume pages");
+    const pageUtilization = await measurePageUtilization(page);
 
     if (format === "png") {
-      await page.addStyleTag({ content: ".app-bar, .toast { display: none !important; }" });
+      await page.addStyleTag({ content: ".app-bar, .floating-editor, .toast { display: none !important; }" });
       await page.locator(".page-wrap").screenshot({ path: outputPath, animations: "disabled" });
     } else if (format === "pdf") {
       await page.emulateMedia({ media: "print" });
@@ -47,11 +48,30 @@ export async function renderResume({ resume, output, url, port = 4173, format })
     } else {
       throw new Error(`unsupported browser output format: ${format}`);
     }
-    return { output: outputPath, pageCount, url: server.url };
+    return { output: outputPath, pageCount, pageUtilization, url: server.url };
   } finally {
     await browser.close();
     if (server.child) stopProcessTree(server.child);
   }
+}
+
+async function measurePageUtilization(page) {
+  return page.locator(".page-wrap .resume-page").evaluateAll((pages) => pages.map((resumePage) => {
+    const pageRect = resumePage.getBoundingClientRect();
+    const style = getComputedStyle(resumePage);
+    const paddingTop = Number.parseFloat(style.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+    const contentTop = pageRect.top + paddingTop;
+    const contentElements = Array.from(resumePage.children).filter((element) => (
+      element.classList.contains("resume-header") || element.classList.contains("resume-section")
+    ));
+    const contentBottom = contentElements.reduce(
+      (bottom, element) => Math.max(bottom, element.getBoundingClientRect().bottom),
+      contentTop,
+    );
+    const usableHeight = Math.max(1, pageRect.height - paddingTop - paddingBottom);
+    return Math.round(Math.min(1, Math.max(0, (contentBottom - contentTop) / usableHeight)) * 100);
+  }));
 }
 
 export async function runEditorServer(port = 3000) {

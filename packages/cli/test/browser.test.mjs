@@ -25,12 +25,14 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
     const rendered = runCli(["render", input, "--out", preview, "--port", String(43173 + index)]);
     assertSuccess(rendered);
     assert.match(rendered.stdout, /Rendered page count: 1/);
+    assertUtilizationDiagnostic(rendered.stdout);
     assert.ok((await stat(preview)).size > 10_000);
   }
 
   const exported = runCli(["export", input, "--out", pdf, "--port", "43174"]);
   assertSuccess(exported);
   assert.match(exported.stdout, /Rendered page count: 1/);
+  assert.match(exported.stdout, /Page utilization: \d+%/);
   assert.ok((await stat(pdf)).size > 10_000);
 });
 
@@ -45,4 +47,15 @@ function runCli(args) {
 
 function assertSuccess(result) {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+}
+
+function assertUtilizationDiagnostic(stdout) {
+  const match = stdout.match(/Page utilization: (\d+)%/);
+  assert.ok(match, `missing page utilization output:\n${stdout}`);
+  const utilization = Number(match[1]);
+  if (utilization < 90) {
+    assert.match(stdout, /appears underfilled \(below 90%\)/);
+  } else if (utilization < 95) {
+    assert.match(stdout, /below the 95% target/);
+  }
 }

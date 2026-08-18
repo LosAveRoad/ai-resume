@@ -62,6 +62,8 @@ ai-resume render resume/resume.json --out resume/output/preview.png
 ai-resume export resume/resume.json --out resume/output/resume.pdf
 ```
 
+`render` 与 `export` 会报告每页正文对可用高度的利用率。最后一页低于 90% 时 CLI 会提示内容可能欠填，90%–94% 时提示继续检查留白，95%–100% 为建议目标区间。该诊断只用于辅助视觉判断，不会自动扩写、缩放或修改简历。
+
 `render` 和 `export` 会在需要时临时启动本地编辑器。已有服务时可传 `--url http://localhost:3000`。
 
 ## 安装配套 Skill
