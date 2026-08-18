@@ -9,7 +9,7 @@
   padding: 0 0 2.5mm;
   display: grid;
   grid-template-areas: "identity photo" "contacts contacts";
-  grid-template-columns: minmax(0, 1fr) 31mm;
+  grid-template-columns: minmax(0, 1fr) 26mm;
   align-items: end;
   column-gap: 10mm;
   row-gap: 3mm;
@@ -31,9 +31,10 @@
 }
 .resume-page[data-template="campus-navy"] .resume-photo-slot { grid-area: photo; justify-self: end; }
 .resume-page[data-template="campus-navy"] .resume-photo {
-  width: 31mm;
-  height: 32mm;
-  border: .45mm solid var(--template-accent);
+  width: 26mm;
+  height: 28mm;
+  border: .35mm solid var(--template-accent);
+  border-radius: 1.5mm;
 }
 .resume-page[data-template="campus-navy"] .resume-contact {
   grid-area: contacts;
@@ -70,19 +71,19 @@
 .resume-page[data-template="campus-navy"] .section-rail {
   display: flex;
   align-items: center;
-  gap: 2mm;
+  gap: 1.7mm;
   border-bottom: .45mm solid var(--template-accent);
 }
 .resume-page[data-template="campus-navy"] .section-icon {
-  width: 7mm;
-  height: 7mm;
+  width: 5.5mm;
+  height: 5.5mm;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: var(--template-accent);
   color: white;
   font-family: Arial, sans-serif;
-  font-size: 6.5pt;
+  font-size: 5.5pt;
   font-weight: 850;
   line-height: 1;
 }
