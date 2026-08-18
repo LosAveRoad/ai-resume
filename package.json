@@ -7,7 +7,7 @@
     "packages/cli"
   ],
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
+    "dev": "npm run build && npm run cli -- dev",
     "build": "npm --prefix apps/web run build",
     "cli": "node packages/cli/bin/ai-resume.mjs",
     "test": "npm run test:web && npm run test:cli",
