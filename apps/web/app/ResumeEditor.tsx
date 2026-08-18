@@ -28,6 +28,7 @@ const LEGACY_MARKDOWN_KEY = "ai-resume.markdown.v1";
 const LEGACY_LAYOUT_KEY = "ai-resume.layout.v1";
 const HEADER_BLOCK_ID = "__header";
 const ADD_MODULE_ID = "__add-module";
+const PAGE_STYLE_ID = "__page-style";
 
 type PhotoData = {
   src: string;
@@ -258,7 +259,7 @@ export function ResumeEditor() {
     () => resume.sections.filter((section) => section.visible),
     [resume.sections],
   );
-  const resolvedEditorTarget = activeEditorTarget === HEADER_BLOCK_ID || activeEditorTarget === ADD_MODULE_ID || resume.sections.some((section) => section.id === activeEditorTarget)
+  const resolvedEditorTarget = activeEditorTarget === HEADER_BLOCK_ID || activeEditorTarget === ADD_MODULE_ID || activeEditorTarget === PAGE_STYLE_ID || resume.sections.some((section) => section.id === activeEditorTarget)
     ? activeEditorTarget
     : HEADER_BLOCK_ID;
   const activeEditorSection = resume.sections.find((section) => section.id === resolvedEditorTarget);
@@ -469,13 +470,6 @@ export function ResumeEditor() {
     setNotice("结构化 JSON 已导出。");
   };
 
-  const resetResume = () => {
-    if (!window.confirm("恢复示例会覆盖当前本地草稿，继续吗？")) return;
-    setResume(DEFAULT_RESUME);
-    setActiveEditorTarget(HEADER_BLOCK_ID);
-    setNotice("已恢复示例内容。");
-  };
-
   const pageStyles = {
     "--resume-font-size": `${activeLayout.fontSize}pt`,
     "--resume-line-height": activeLayout.lineHeight,
@@ -485,7 +479,7 @@ export function ResumeEditor() {
   } as CSSProperties;
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-editor-expanded={editorExpanded ? "true" : "false"}>
       <header className="app-bar">
         <div className="brand-lockup">
           <div className="brand-mark" aria-hidden="true">AR</div>
@@ -497,11 +491,9 @@ export function ResumeEditor() {
 
         <div className="app-actions">
           <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
-          <button className="ghost-button" type="button" onClick={() => selectEditorTarget(resolvedEditorTarget)}>结构化编辑</button>
           <button className="ghost-button" type="button" onClick={() => importRef.current?.click()}>导入</button>
           <button className="ghost-button action-secondary" type="button" onClick={exportMarkdown}>导出 MD</button>
           <button className="ghost-button action-secondary" type="button" onClick={exportJson}>JSON</button>
-          <button className="ghost-button action-secondary" type="button" onClick={resetResume}>恢复示例</button>
           <button className="primary-button" type="button" onClick={() => window.print()}>导出 PDF</button>
           <input ref={importRef} className="visually-hidden" type="file" accept=".md,.json,text/markdown,application/json" onChange={importFile} />
         </div>
@@ -556,18 +548,9 @@ export function ResumeEditor() {
         />
 
         {editorExpanded && <section className="editor-zone">
-        <div className="editor-shell">
-          <header className="editor-heading">
-            <div>
-              <p className="eyebrow">ACTIVE MODULE</p>
-              <h2>{resolvedEditorTarget === HEADER_BLOCK_ID ? "基本信息" : resolvedEditorTarget === ADD_MODULE_ID ? "添加模块" : activeEditorSection?.title}</h2>
-              <p>当前只编辑一个模块；内容会即时同步到上方简历预览。</p>
-            </div>
-            <span className="syntax-badge">FIELD-LEVEL MD</span>
-          </header>
-
-          <div className="structured-editor">
-            <div className="content-editor">
+          <div className="editor-shell">
+            <div className="structured-editor">
+              <div className="content-editor">
               {resolvedEditorTarget === HEADER_BLOCK_ID && (
                 <HeaderEditor header={resume.header} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
               )}
@@ -588,6 +571,10 @@ export function ResumeEditor() {
                 />
               )}
 
+              {resolvedEditorTarget === PAGE_STYLE_ID && (
+                <LayoutEditor layout={activeLayout} onChange={updateLayout} />
+              )}
+
               {resolvedEditorTarget === ADD_MODULE_ID && (
                 <div className="add-module-card is-active-panel">
                   <div>
@@ -600,36 +587,9 @@ export function ResumeEditor() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
-
-            <aside className="layout-panel">
-              <section>
-                <p className="panel-label">PAGE STYLE</p>
-                <h3>页面版式</h3>
-                <div className="range-stack">
-                  <RangeField label="正文字号" value={activeLayout.fontSize} min={8.25} max={11.5} step={0.25} suffix="pt" onChange={(value) => updateLayout("fontSize", value)} />
-                  <RangeField label="行距" value={activeLayout.lineHeight} min={1.2} max={1.7} step={0.05} suffix="" onChange={(value) => updateLayout("lineHeight", value)} />
-                  <RangeField label="模块间距" value={activeLayout.sectionGap} min={3} max={16} step={1} suffix="px" onChange={(value) => updateLayout("sectionGap", value)} />
-                  <RangeField label="水平页边距" value={activeLayout.marginX} min={8} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginX", value)} />
-                  <RangeField label="垂直页边距" value={activeLayout.marginY} min={8} max={24} step={1} suffix="mm" onChange={(value) => updateLayout("marginY", value)} />
-                </div>
-              </section>
-
-              <section className="syntax-guide">
-                <p className="panel-label">INSIDE TEXT FIELDS</p>
-                <h3>段落 Markdown</h3>
-                <dl>
-                  <div><dt>- 项目</dt><dd>无序列表</dd></div>
-                  <div><dt>1. 项目</dt><dd>有序列表</dd></div>
-                  <div><dt>**text**</dt><dd>粗体</dd></div>
-                  <div><dt>*text*</dt><dd>斜体</dd></div>
-                  <div><dt>`code`</dt><dd>行内代码</dd></div>
-                  <div><dt>[text](url)</dt><dd>链接</dd></div>
-                </dl>
-              </section>
-            </aside>
           </div>
-        </div>
         </section>}
       </section>
 
@@ -647,6 +607,7 @@ function ModuleNavigator({ headerName, sections, activeTarget, onSelect }: {
   const targets = [
     { id: HEADER_BLOCK_ID, title: "基本信息", visible: true },
     ...sections.map((section) => ({ id: section.id, title: section.title, visible: section.visible })),
+    { id: PAGE_STYLE_ID, title: "页面样式", visible: true },
   ];
 
   return (
@@ -665,9 +626,7 @@ function ModuleNavigator({ headerName, sections, activeTarget, onSelect }: {
               data-visible={target.visible ? "true" : "false"}
               onClick={() => onSelect(target.id)}
             >
-              <span className="module-status" aria-hidden="true" />
               <span>{target.title}</span>
-              {active && <span className="module-edit-mark" aria-hidden="true">✎</span>}
             </button>
           );
         })}
@@ -679,11 +638,34 @@ function ModuleNavigator({ headerName, sections, activeTarget, onSelect }: {
           data-active={activeTarget === ADD_MODULE_ID ? "true" : "false"}
           onClick={() => onSelect(ADD_MODULE_ID)}
         >
-          <span className="module-add-icon" aria-hidden="true">＋</span>
-          <span>添加模块</span>
+          <span aria-hidden="true">＋</span>
+          <span>添加</span>
         </button>
       </div>
     </nav>
+  );
+}
+
+function LayoutEditor({ layout, onChange }: {
+  layout: LayoutData;
+  onChange: (key: keyof LayoutData, value: number) => void;
+}) {
+  return (
+    <section className="layout-panel page-style-editor">
+      <header className="card-heading">
+        <div>
+          <span className="card-index">Aa</span>
+          <div><h3>页面样式</h3><p>当前模板独立保存这些排版参数</p></div>
+        </div>
+      </header>
+      <div className="range-stack page-style-ranges">
+        <RangeField label="正文字号" value={layout.fontSize} min={8.25} max={11.5} step={0.25} suffix="pt" onChange={(value) => onChange("fontSize", value)} />
+        <RangeField label="行距" value={layout.lineHeight} min={1.2} max={1.7} step={0.05} suffix="" onChange={(value) => onChange("lineHeight", value)} />
+        <RangeField label="模块间距" value={layout.sectionGap} min={3} max={16} step={1} suffix="px" onChange={(value) => onChange("sectionGap", value)} />
+        <RangeField label="水平页边距" value={layout.marginX} min={8} max={24} step={1} suffix="mm" onChange={(value) => onChange("marginX", value)} />
+        <RangeField label="垂直页边距" value={layout.marginY} min={8} max={24} step={1} suffix="mm" onChange={(value) => onChange("marginY", value)} />
+      </div>
+    </section>
   );
 }
 
@@ -709,10 +691,6 @@ function HeaderEditor({ header, onChange, onPhotoChange, onPhotoError }: {
 
   return (
     <section className="editor-card basic-card">
-      <header className="card-heading">
-        <div><span className="card-index">00</span><div><h3>基本信息</h3><p>页面顶部固定内容</p></div></div>
-        <span className="fixed-badge">HEADER</span>
-      </header>
       <div className="field-grid header-fields">
         <TextField label="姓名" value={header.name} onChange={(value) => onChange("name", value)} />
         <TextField label="求职方向" value={header.role} onChange={(value) => onChange("role", value)} />
