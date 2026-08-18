@@ -88,6 +88,9 @@ button { color: inherit; }
   transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
 }
 .ghost-button:hover { border-color: #9eabc0; background: #f8faff; }
+.ghost-button:disabled { cursor: not-allowed; opacity: .38; }
+.history-button { display: inline-flex; align-items: center; gap: 5px; }
+.history-button span { font-size: 15px; line-height: 1; }
 .primary-button { border-color: var(--accent); background: var(--accent); color: white; }
 .primary-button:hover { border-color: var(--accent-deep); background: var(--accent-deep); }
 .ghost-button:active, .primary-button:active { transform: translateY(1px); }
@@ -121,8 +124,8 @@ button { color: inherit; }
 .page-wrap { min-width: 210mm; display: grid; gap: 24px; }
 
 .template-picker {
-  width: 210mm;
-  margin: 0 auto 16px;
+  width: 100%;
+  margin: 0 0 20px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
@@ -256,6 +259,8 @@ button { color: inherit; }
 .compact-list {
   padding-left: 14px;
 }
+.resume-prose ul.compact-list { list-style-type: disc; }
+.resume-prose ol.compact-list { list-style-type: decimal; }
 .compact-list li { padding-left: 2px; }
 .resume-prose a { color: inherit; text-decoration: underline; text-decoration-thickness: .5px; text-underline-offset: 1px; }
 .resume-prose strong { font-weight: 800; }
@@ -673,12 +678,12 @@ button { color: inherit; }
 @media (max-width: 680px) {
   .app-bar { padding-inline: 16px; }
   .app-actions { width: 100%; justify-content: flex-start; }
-  .action-secondary { display: none; }
   .preview-stage { padding: 26px 16px 40px; }
   .module-track { padding-inline: 10px; }
   .module-tab { min-width: 88px; padding-inline: 10px; }
   .editor-zone { height: calc(50vh - 69px); padding: 14px 12px 100px; }
   .page-style-ranges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .template-picker { grid-template-columns: 1fr; }
   .header-fields, .entry-fields { grid-template-columns: 1fr; }
   .photo-crop-controls { grid-template-columns: 78px 1fr; }
   .photo-actions { grid-column: 1 / -1; display: flex; }

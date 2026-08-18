@@ -28,9 +28,10 @@ test("server-renders the local resume editor shell", async () => {
   assert.match(html, /页面样式/);
   assert.ok(html.indexOf("页面样式") < html.indexOf("基本信息"));
   assert.match(html, /导出 PDF/);
-  assert.match(html, /现代编号/);
-  assert.match(html, /经典酒红/);
-  assert.match(html, /校园深蓝/);
+  assert.match(html, /撤回/);
+  assert.match(html, /反撤回/);
+  assert.match(html, /<ol class="compact-list">/);
+  assert.doesNotMatch(html, />导入<|>导出 MD<|>JSON</);
   assert.match(html, /上传并裁剪照片/);
   assert.doesNotMatch(html, /SkeletonPreview|react-loading-skeleton|codex-preview/);
 });

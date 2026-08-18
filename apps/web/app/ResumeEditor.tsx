@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -242,15 +243,47 @@ const DEFAULT_RESUME: ResumeDocument = {
 };
 
 export function ResumeEditor() {
-  const [resume, setResume] = useState<ResumeDocument>(DEFAULT_RESUME);
+  const [resume, setResumeState] = useState<ResumeDocument>(DEFAULT_RESUME);
   const [hydrated, setHydrated] = useState(false);
   const [pages, setPages] = useState<string[][]>([[HEADER_BLOCK_ID]]);
   const [oversizedSection, setOversizedSection] = useState(false);
   const [notice, setNotice] = useState("");
   const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
   const [editorExpanded, setEditorExpanded] = useState(true);
+  const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
+  const resumeRef = useRef<ResumeDocument>(DEFAULT_RESUME);
+  const historyRef = useRef<{ past: ResumeDocument[]; future: ResumeDocument[] }>({ past: [], future: [] });
   const measureRef = useRef<HTMLDivElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
+
+  const commitResume = useCallback((update: ResumeDocument | ((current: ResumeDocument) => ResumeDocument)) => {
+    const current = resumeRef.current;
+    const next = typeof update === "function" ? update(current) : update;
+    if (next === current) return;
+    historyRef.current.past.push(current);
+    if (historyRef.current.past.length > 100) historyRef.current.past.shift();
+    historyRef.current.future = [];
+    resumeRef.current = next;
+    setResumeState(next);
+    setHistoryStatus({ canUndo: true, canRedo: false });
+  }, []);
+
+  const undoResume = useCallback(() => {
+    const previous = historyRef.current.past.pop();
+    if (!previous) return;
+    historyRef.current.future.push(resumeRef.current);
+    resumeRef.current = previous;
+    setResumeState(previous);
+    setHistoryStatus({ canUndo: historyRef.current.past.length > 0, canRedo: true });
+  }, []);
+
+  const redoResume = useCallback(() => {
+    const next = historyRef.current.future.pop();
+    if (!next) return;
+    historyRef.current.past.push(resumeRef.current);
+    resumeRef.current = next;
+    setResumeState(next);
+    setHistoryStatus({ canUndo: true, canRedo: historyRef.current.future.length > 0 });
+  }, []);
 
   const activeTemplate = resume.presentation.activeTemplate;
   const activeLayout = resume.presentation.layouts[activeTemplate];
@@ -272,16 +305,23 @@ export function ResumeEditor() {
         const legacyDocument = localStorage.getItem(LEGACY_DOCUMENT_KEY);
         const legacyMarkdown = localStorage.getItem(LEGACY_MARKDOWN_KEY);
         const legacyLayout = localStorage.getItem(LEGACY_LAYOUT_KEY);
+        let loadedResume: ResumeDocument | null = null;
 
         if (structured) {
-          setResume(normalizeResume(JSON.parse(structured)));
+          loadedResume = normalizeResume(JSON.parse(structured));
         } else if (legacyStructured) {
-          setResume(normalizeResume(JSON.parse(legacyStructured)));
+          loadedResume = normalizeResume(JSON.parse(legacyStructured));
         } else if (legacyDocument) {
-          setResume(normalizeResume(JSON.parse(legacyDocument)));
+          loadedResume = normalizeResume(JSON.parse(legacyDocument));
         } else if (legacyMarkdown) {
           const layout = legacyLayout ? normalizeLayout(JSON.parse(legacyLayout)) : DEFAULT_LAYOUT;
-          setResume(parseLegacyMarkdown(legacyMarkdown, layout));
+          loadedResume = parseLegacyMarkdown(legacyMarkdown, layout);
+        }
+        if (loadedResume) {
+          historyRef.current = { past: [], future: [] };
+          resumeRef.current = loadedResume;
+          setResumeState(loadedResume);
+          setHistoryStatus({ canUndo: false, canRedo: false });
         }
       } catch {
         setNotice("本地草稿无法读取，已载入示例内容。");
@@ -306,6 +346,26 @@ export function ResumeEditor() {
     const timer = window.setTimeout(() => setNotice(""), 3200);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    const handleHistoryShortcut = (event: KeyboardEvent) => {
+      const modifier = event.ctrlKey || event.metaKey;
+      if (!modifier) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && event.shiftKey) {
+        event.preventDefault();
+        redoResume();
+      } else if (key === "z") {
+        event.preventDefault();
+        undoResume();
+      } else if (key === "y") {
+        event.preventDefault();
+        redoResume();
+      }
+    };
+    window.addEventListener("keydown", handleHistoryShortcut);
+    return () => window.removeEventListener("keydown", handleHistoryShortcut);
+  }, [redoResume, undoResume]);
 
   useLayoutEffect(() => {
     const measurement = measureRef.current;
@@ -341,22 +401,22 @@ export function ResumeEditor() {
   }, [activeLayout.marginY, hydrated, resume]);
 
   const updateHeader = (key: HeaderTextKey, value: string) => {
-    setResume((current) => ({ ...current, header: { ...current.header, [key]: value } }));
+    commitResume((current) => ({ ...current, header: { ...current.header, [key]: value } }));
   };
 
   const updatePhoto = (photo: PhotoData | null) => {
-    setResume((current) => ({ ...current, header: { ...current.header, photo } }));
+    commitResume((current) => ({ ...current, header: { ...current.header, photo } }));
   };
 
   const selectTemplate = (templateId: TemplateId) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       presentation: { ...current.presentation, activeTemplate: templateId },
     }));
   };
 
   const updateLayout = (key: keyof LayoutData, value: number) => {
-    setResume((current) => {
+    commitResume((current) => {
       const templateId = current.presentation.activeTemplate;
       return {
         ...current,
@@ -372,14 +432,14 @@ export function ResumeEditor() {
   };
 
   const updateSection = (sectionId: string, patch: Partial<ResumeSection>) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       sections: current.sections.map((section) => section.id === sectionId ? { ...section, ...patch } : section),
     }));
   };
 
   const moveSection = (sectionId: string, direction: -1 | 1) => {
-    setResume((current) => ({ ...current, sections: moveItem(current.sections, sectionId, direction) }));
+    commitResume((current) => ({ ...current, sections: moveItem(current.sections, sectionId, direction) }));
   };
 
   const addSection = (kind: ResumeSection["kind"]) => {
@@ -392,13 +452,13 @@ export function ResumeEditor() {
       text: kind === "text" ? "在这里输入内容，可使用 **粗体** 或列表。" : "",
       entries: kind === "entries" ? [createBlankEntry()] : [],
     };
-    setResume((current) => ({ ...current, sections: [...current.sections, section] }));
+    commitResume((current) => ({ ...current, sections: [...current.sections, section] }));
     setActiveEditorTarget(section.id);
     setNotice("已添加自选模块。");
   };
 
   const deleteSection = (sectionId: string) => {
-    setResume((current) => ({ ...current, sections: current.sections.filter((section) => section.id !== sectionId) }));
+    commitResume((current) => ({ ...current, sections: current.sections.filter((section) => section.id !== sectionId) }));
     setActiveEditorTarget(HEADER_BLOCK_ID);
   };
 
@@ -408,7 +468,7 @@ export function ResumeEditor() {
   };
 
   const updateEntry = (sectionId: string, entryId: string, patch: Partial<ResumeEntry>) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       sections: current.sections.map((section) => section.id === sectionId
         ? { ...section, entries: section.entries.map((entry) => entry.id === entryId ? { ...entry, ...patch } : entry) }
@@ -417,7 +477,7 @@ export function ResumeEditor() {
   };
 
   const addEntry = (sectionId: string) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       sections: current.sections.map((section) => section.id === sectionId
         ? { ...section, entries: [...section.entries, createBlankEntry()] }
@@ -426,7 +486,7 @@ export function ResumeEditor() {
   };
 
   const moveEntry = (sectionId: string, entryId: string, direction: -1 | 1) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       sections: current.sections.map((section) => section.id === sectionId
         ? { ...section, entries: moveItem(section.entries, entryId, direction) }
@@ -435,39 +495,12 @@ export function ResumeEditor() {
   };
 
   const deleteEntry = (sectionId: string, entryId: string) => {
-    setResume((current) => ({
+    commitResume((current) => ({
       ...current,
       sections: current.sections.map((section) => section.id === sectionId
         ? { ...section, entries: section.entries.filter((entry) => entry.id !== entryId) }
         : section),
     }));
-  };
-
-  const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      const content = await file.text();
-      const imported = file.name.toLowerCase().endsWith(".md")
-        ? parseLegacyMarkdown(content, activeLayout)
-        : normalizeResume(JSON.parse(content));
-      setResume(imported);
-      setActiveEditorTarget(HEADER_BLOCK_ID);
-      setNotice("简历内容已载入。");
-    } catch {
-      setNotice("导入失败：请选择有效的 Markdown 或简历 JSON。");
-    }
-  };
-
-  const exportMarkdown = () => {
-    downloadText(resumeToMarkdown(resume), `${slugify(resume.header.name || "resume")}.resume.md`, "text/markdown");
-    setNotice("Markdown 快照已导出。");
-  };
-
-  const exportJson = () => {
-    downloadText(JSON.stringify(resume, null, 2), `${slugify(resume.header.name || "resume")}.resume.json`, "application/json");
-    setNotice("结构化 JSON 已导出。");
   };
 
   const pageStyles = {
@@ -491,11 +524,9 @@ export function ResumeEditor() {
 
         <div className="app-actions">
           <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
-          <button className="ghost-button" type="button" onClick={() => importRef.current?.click()}>导入</button>
-          <button className="ghost-button action-secondary" type="button" onClick={exportMarkdown}>导出 MD</button>
-          <button className="ghost-button action-secondary" type="button" onClick={exportJson}>JSON</button>
+          <button className="ghost-button history-button" type="button" title="撤回（Ctrl/Cmd+Z）" disabled={!historyStatus.canUndo} onClick={undoResume}><span aria-hidden="true">↶</span> 撤回</button>
+          <button className="ghost-button history-button" type="button" title="反撤回（Ctrl/Cmd+Shift+Z）" disabled={!historyStatus.canRedo} onClick={redoResume}><span aria-hidden="true">↷</span> 反撤回</button>
           <button className="primary-button" type="button" onClick={() => window.print()}>导出 PDF</button>
-          <input ref={importRef} className="visually-hidden" type="file" accept=".md,.json,text/markdown,application/json" onChange={importFile} />
         </div>
       </header>
 
@@ -511,8 +542,6 @@ export function ResumeEditor() {
               <span>{pages.length} PAGE{pages.length > 1 ? "S" : ""}</span>
             </div>
           </header>
-
-          <TemplatePicker activeTemplate={activeTemplate} onSelect={selectTemplate} />
 
           <div className="page-wrap" data-preview-ready={hydrated ? "true" : "false"}>
             {pages.map((blockIds, pageIndex) => (
@@ -572,7 +601,7 @@ export function ResumeEditor() {
               )}
 
               {resolvedEditorTarget === PAGE_STYLE_ID && (
-                <LayoutEditor layout={activeLayout} onChange={updateLayout} />
+                <LayoutEditor activeTemplate={activeTemplate} layout={activeLayout} onTemplateChange={selectTemplate} onChange={updateLayout} />
               )}
 
               {resolvedEditorTarget === ADD_MODULE_ID && (
@@ -676,8 +705,10 @@ function ModuleNavigator({ headerName, sections, activeTarget, onSelect, onSecti
   );
 }
 
-function LayoutEditor({ layout, onChange }: {
+function LayoutEditor({ activeTemplate, layout, onTemplateChange, onChange }: {
+  activeTemplate: TemplateId;
   layout: LayoutData;
+  onTemplateChange: (templateId: TemplateId) => void;
   onChange: (key: keyof LayoutData, value: number) => void;
 }) {
   return (
@@ -688,6 +719,7 @@ function LayoutEditor({ layout, onChange }: {
           <div><h3>页面样式</h3><p>当前模板独立保存这些排版参数</p></div>
         </div>
       </header>
+      <TemplatePicker activeTemplate={activeTemplate} onSelect={onTemplateChange} />
       <div className="range-stack page-style-ranges">
         <RangeField label="正文字号" value={layout.fontSize} min={8.25} max={11.5} step={0.25} suffix="pt" onChange={(value) => onChange("fontSize", value)} />
         <RangeField label="行距" value={layout.lineHeight} min={1.2} max={1.7} step={0.05} suffix="" onChange={(value) => onChange("lineHeight", value)} />
@@ -1163,21 +1195,6 @@ function parseContacts(value: string, header: HeaderData) {
   });
 }
 
-function resumeToMarkdown(resume: ResumeDocument) {
-  const contacts = [resume.header.phone, resume.header.email, resume.header.location, resume.header.website].filter(Boolean).join(" | ");
-  const body = resume.sections.filter((section) => section.visible).map((section) => {
-    const heading = `## ${section.title}`;
-    if (section.kind === "text") return `${heading}\n${section.text}`;
-    const entries = section.entries.map((entry) => {
-      const dates = [entry.startDate, entry.endDate].filter(Boolean).join(" - ");
-      const meta = [entry.title, entry.subtitle, dates, entry.location].filter(Boolean).join(" | ");
-      return `### ${meta}${entry.details ? `\n${entry.details}` : ""}`;
-    }).join("\n\n");
-    return `${heading}\n${entries}`;
-  }).join("\n\n");
-  return `# ${resume.header.name}\n> ${resume.header.role}\n\n${contacts}\n\n${body}`.trim();
-}
-
 function renderInlineMarkdown(value: string): ReactNode[] {
   const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   return value.split(pattern).filter(Boolean).map((part, index) => {
@@ -1285,17 +1302,6 @@ function stripInlineMarkdown(value: string) {
 }
 
 function isSafeLink(value: string) { return /^(https?:\/\/|mailto:)/i.test(value); }
-
-function downloadText(content: string, filename: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
 
 async function fileToDataUrl(file: File) {
   const source = await new Promise<string>((resolve, reject) => {
