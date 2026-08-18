@@ -71,7 +71,7 @@ type ResumeSection = {
   entries: ResumeEntry[];
 };
 
-type ResumeDocument = {
+export type ResumeDocument = {
   version: 3;
   header: HeaderData;
   presentation: {
@@ -112,7 +112,7 @@ const SHOWCASE_RESUMES = Object.fromEntries(
 
 const DEFAULT_RESUME: ResumeDocument = SHOWCASE_RESUMES.agent;
 
-function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
+export function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
   const isAgent = caseId === "agent";
   const activeTemplate: TemplateId = isAgent ? "numbered-rail" : "campus-navy";
   const compactLayout: LayoutData = {
@@ -217,6 +217,35 @@ function createShowcaseResume(caseId: ResumeCaseId): ResumeDocument {
   };
 }
 
+export function createBlankResume(): ResumeDocument {
+  return {
+    version: 3,
+    header: {
+      name: "你的姓名",
+      role: "目标职位",
+      phone: "+86 138 0000 0000",
+      email: "you@example.com",
+      location: "城市",
+      website: "github.com/your-name",
+      photo: null,
+    },
+    presentation: createPresentation(DEFAULT_TEMPLATE_ID),
+    sections: [
+      { id: "summary", title: "个人简介", kind: "text", visible: true, fixed: true, text: "用两句话概括与目标岗位最相关的真实优势。", entries: [] },
+      { id: "education", title: "教育背景", kind: "entries", visible: true, fixed: true, text: "", entries: [
+        { id: "education-1", title: "学校名称", subtitle: "专业 · 学位", startDate: "2022.09", endDate: "2026.06", location: "城市", details: "- 填写与岗位有关的课程、成绩或研究经历" },
+      ] },
+      { id: "skills", title: "专业技能", kind: "text", visible: true, fixed: true, text: "- **编程语言：** 填写真实技能\n- **工程能力：** 填写真实技能", entries: [] },
+      { id: "work", title: "工作经历", kind: "entries", visible: false, fixed: true, text: "", entries: [] },
+      { id: "internship", title: "实习经历", kind: "entries", visible: false, fixed: true, text: "", entries: [] },
+      { id: "projects", title: "项目经历", kind: "entries", visible: true, fixed: true, text: "", entries: [
+        { id: "project-1", title: "项目名称", subtitle: "你的角色", startDate: "2025.01", endDate: "至今", location: "", details: "1. 描述你解决的真实问题和采取的行动\n2. 用可核验的证据说明结果" },
+      ] },
+      { id: "honors", title: "荣誉证书", kind: "text", visible: false, fixed: true, text: "", entries: [] },
+    ],
+  };
+}
+
 function createAgentProjectEntries(): ResumeEntry[] {
   return [
     {
@@ -263,8 +292,14 @@ function createBackendProjectEntries(): ResumeEntry[] {
   ];
 }
 
-export function ResumeEditor() {
-  const [resume, setResumeState] = useState<ResumeDocument>(DEFAULT_RESUME);
+export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
+  initialResume?: ResumeDocument;
+  onResumeChange?: (resume: ResumeDocument) => void;
+  onBack?: () => void;
+} = {}) {
+  const startingResume = initialResume ? cloneResume(initialResume) : DEFAULT_RESUME;
+  const managedResumeRef = useRef(Boolean(initialResume));
+  const [resume, setResumeState] = useState<ResumeDocument>(() => startingResume);
   const [hydrated, setHydrated] = useState(false);
   const [pages, setPages] = useState<string[][]>([[HEADER_BLOCK_ID]]);
   const [oversizedSection, setOversizedSection] = useState(false);
@@ -272,8 +307,8 @@ export function ResumeEditor() {
   const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
   const [editorExpanded, setEditorExpanded] = useState(true);
   const [historyStatus, setHistoryStatus] = useState({ canUndo: false, canRedo: false });
-  const [activeShowcase, setActiveShowcase] = useState<ResumeCaseId | null>("agent");
-  const resumeRef = useRef<ResumeDocument>(DEFAULT_RESUME);
+  const [activeShowcase, setActiveShowcase] = useState<ResumeCaseId | null>(initialResume ? null : "agent");
+  const resumeRef = useRef<ResumeDocument>(startingResume);
   const historyRef = useRef<{ past: ResumeDocument[]; future: ResumeDocument[] }>({ past: [], future: [] });
   const measureRef = useRef<HTMLDivElement>(null);
 
@@ -323,6 +358,10 @@ export function ResumeEditor() {
   const activeEditorSection = resume.sections.find((section) => section.id === resolvedEditorTarget);
 
   useEffect(() => {
+    if (managedResumeRef.current) {
+      setHydrated(true);
+      return;
+    }
     const frame = window.requestAnimationFrame(() => {
       try {
         const structured = localStorage.getItem(STRUCTURED_KEY);
@@ -361,11 +400,12 @@ export function ResumeEditor() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem(STRUCTURED_KEY, JSON.stringify(resume));
+      if (managedResumeRef.current) onResumeChange?.(resume);
+      else localStorage.setItem(STRUCTURED_KEY, JSON.stringify(resume));
     } catch {
       window.setTimeout(() => setNotice("本地存储空间不足，请更换尺寸更小的照片。"), 0);
     }
-  }, [hydrated, resume]);
+  }, [hydrated, onResumeChange, resume]);
 
   useEffect(() => {
     if (!notice) return;
@@ -548,7 +588,9 @@ export function ResumeEditor() {
     <main className="app-shell" data-editor-expanded={editorExpanded ? "true" : "false"}>
       <header className="app-bar">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true">AR</div>
+          {/* Generated with OpenAI ImageGen, stored locally for deterministic offline use. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="brand-logo" src="/ai-resume-logo.png" alt="" aria-hidden="true" />
           <div>
             <p className="eyebrow">LOCAL FIRST</p>
             <h1>AI Resume</h1>
@@ -558,6 +600,7 @@ export function ResumeEditor() {
         <ShowcaseSwitcher activeCase={activeShowcase} onSelect={loadShowcase} />
 
         <div className="app-actions">
+          {onBack && <button className="ghost-button" type="button" onClick={onBack}>返回首页</button>}
           <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
           <button className="ghost-button history-button" type="button" title="撤回（Ctrl/Cmd+Z）" disabled={!historyStatus.canUndo} onClick={undoResume}><span aria-hidden="true">↶</span> 撤回</button>
           <button className="ghost-button history-button" type="button" title="反撤回（Ctrl/Cmd+Shift+Z）" disabled={!historyStatus.canRedo} onClick={redoResume}><span aria-hidden="true">↷</span> 反撤回</button>

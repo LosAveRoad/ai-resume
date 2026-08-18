@@ -24,7 +24,9 @@ export async function renderResume({ resume, output, url, port = 4173, format })
       key: STORAGE_KEY,
       value: resume,
     });
-    await page.goto(server.url, { waitUntil: "networkidle" });
+    const editorUrl = new URL(server.url);
+    editorUrl.searchParams.set("editor", "1");
+    await page.goto(editorUrl.href, { waitUntil: "networkidle" });
     await page.waitForSelector('[data-preview-ready="true"]');
     await page.waitForFunction(() => window.__RESUME_READY__ === true && document.fonts.status === "loaded");
     await page.waitForTimeout(150);
