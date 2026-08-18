@@ -5,14 +5,21 @@ description: Create, tailor, visually inspect, and export local structured resum
 
 # AI Resume
 
-Use the local material bank as the source of truth and `resume.json` as the editable document. Let the coding agent make content and layout decisions after inspecting rendered pages; never delegate those decisions to an automatic fit command.
+Use the shared localhost workspace as the source of truth for browser work: its `.ai-resume-data/workspace.json` stores the resume library and `.ai-resume-data/materials.md` stores the material bank. File-based workspaces created by `ai-resume init` remain supported and use `resume/materials.md` plus `resume/resume.json`. Let the coding agent make content and layout decisions after inspecting rendered pages; never delegate those decisions to an automatic fit command.
 
 ## Start or locate the workspace
 
-1. Run `ai-resume init .` when `resume/materials.md` and `resume/resume.json` do not exist.
-2. Read `resume/materials.md`, the current `resume/resume.json`, and the supplied job description before editing.
+1. Run `ai-resume dev` to start the shared local workspace, or `ai-resume init .` for a file-based workspace.
+2. Read `.ai-resume-data/materials.md` and `.ai-resume-data/workspace.json` when working through localhost; read `resume/materials.md` and the current `resume/resume.json` for a file-based workspace.
 3. Read [references/schema.md](references/schema.md) before creating or substantially restructuring resume JSON.
 4. Treat all claims, dates, metrics, links, education, and skills in the material bank as factual boundaries. Ask for missing facts instead of inventing them.
+
+## Shared local workspace
+
+1. The browser UI talks to `GET/PUT /api/workspace` on the same localhost server. Do not treat browser `localStorage` as the canonical library.
+2. The server writes `.ai-resume-data/workspace.json` and `.ai-resume-data/materials.md`; these files are shared by every browser that opens the same localhost port.
+3. On first load, migrate an older browser library into the shared workspace only when the server library is empty. After migration, use the server copy so Edge, Chrome, and the in-app browser see the same records.
+4. Keep `.ai-resume-data/` local and uncommitted. For backups or team review, copy the workspace files explicitly or use the CLI file workflow.
 
 ## Tailor the document
 

@@ -76,8 +76,8 @@ async function measurePageUtilization(page) {
   }));
 }
 
-export async function runEditorServer(port = 3000) {
-  const child = startEditorServer(port, true);
+export async function runEditorServer(port = 3000, dataDir) {
+  const child = startEditorServer(port, true, dataDir);
   return new Promise((resolvePromise, rejectPromise) => {
     child.once("error", rejectPromise);
     child.once("exit", (code, signal) => {
@@ -98,7 +98,7 @@ async function ensureEditorServer(port) {
     return { url: "http://localhost:3000", child: null };
   }
 
-  const child = startEditorServer(port, false, runtime);
+  const child = startEditorServer(port, false);
   const logs = [];
   child.stdout?.on("data", (chunk) => appendLog(logs, chunk));
   child.stderr?.on("data", (chunk) => appendLog(logs, chunk));
@@ -119,12 +119,12 @@ async function ensureEditorServer(port) {
   throw new Error(`editor did not become ready on port ${port}${diagnostic}`);
 }
 
-function startEditorServer(port, inheritOutput) {
+function startEditorServer(port, inheritOutput, dataDir) {
   validatePort(port);
   const runtime = resolveEditorRuntime();
   if (runtime.kind === "production") {
     const serverScript = fileURLToPath(new URL("./serve-editor.mjs", import.meta.url));
-    return spawn(process.execPath, [serverScript, "--root", runtime.root, "--port", String(port)], {
+    return spawn(process.execPath, [serverScript, "--root", runtime.root, "--port", String(port), ...(dataDir ? ["--data-dir", resolve(dataDir)] : [])], {
       stdio: inheritOutput ? "inherit" : ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });

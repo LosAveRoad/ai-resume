@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { chromium } from "playwright";
@@ -7,18 +9,23 @@ import { chromium } from "playwright";
 test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, async (t) => {
   const repositoryRoot = resolve(import.meta.dirname, "../../..");
   const port = 43181;
+  const dataDir = await mkdtemp(resolve(tmpdir(), "ai-resume-workspace-"));
   const server = spawn(process.execPath, [
     resolve(repositoryRoot, "packages/cli/src/serve-editor.mjs"),
     "--root", resolve(repositoryRoot, "apps/web/dist"),
     "--port", String(port),
+    "--data-dir", dataDir,
   ], { cwd: repositoryRoot, stdio: "ignore", windowsHide: true });
   t.after(() => stopProcessTree(server));
   await waitForServer(`http://127.0.0.1:${port}`);
+  const workspaceResponse = await fetch(`http://127.0.0.1:${port}/api/workspace`);
+  assert.equal(workspaceResponse.ok, true);
+  assert.deepEqual(await workspaceResponse.json(), { version: 1, resumes: [], materials: "" });
 
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "networkidle" });
+  await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "load" });
 
   assert.equal(await page.getByText("我的简历", { exact: true }).first().isVisible(), true);
   assert.equal(await page.getByRole("button", { name: "创建第一份简历" }).isVisible(), true);
@@ -28,16 +35,16 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   assert.equal(await page.getByText("案例速览", { exact: true }).count(), 0);
   await page.getByLabel("简历名称").fill("我的后端求职简历");
 
-  await page.goBack({ waitUntil: "networkidle" });
+  await page.goBack({ waitUntil: "load" });
   assert.equal(await page.locator(".resume-card").count(), 1);
-  await page.goForward({ waitUntil: "networkidle" });
+  await page.goForward({ waitUntil: "load" });
   assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
 
   await page.getByRole("link", { name: "返回 AI Resume 首页" }).click();
   assert.equal(await page.locator(".resume-card").count(), 1);
   assert.match(await page.locator(".resume-card").innerText(), /我的后端求职简历/);
 
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "load" });
   assert.equal(await page.locator(".resume-card").count(), 1);
 });
 
