@@ -545,6 +545,9 @@ export function ResumeEditor() {
           sections={resume.sections}
           activeTarget={resolvedEditorTarget}
           onSelect={selectEditorTarget}
+          onSectionMove={(direction) => activeEditorSection && moveSection(activeEditorSection.id, direction)}
+          onSectionToggle={() => activeEditorSection && updateSection(activeEditorSection.id, { visible: !activeEditorSection.visible })}
+          onSectionDelete={() => activeEditorSection && deleteSection(activeEditorSection.id)}
         />
 
         {editorExpanded && <section className="editor-zone">
@@ -560,10 +563,7 @@ export function ResumeEditor() {
                   key={activeEditorSection.id}
                   section={activeEditorSection}
                   index={resume.sections.findIndex((section) => section.id === activeEditorSection.id)}
-                  total={resume.sections.length}
                   onChange={(patch) => updateSection(activeEditorSection.id, patch)}
-                  onMove={(direction) => moveSection(activeEditorSection.id, direction)}
-                  onDelete={() => deleteSection(activeEditorSection.id)}
                   onEntryChange={(entryId, patch) => updateEntry(activeEditorSection.id, entryId, patch)}
                   onEntryAdd={() => addEntry(activeEditorSection.id)}
                   onEntryMove={(entryId, direction) => moveEntry(activeEditorSection.id, entryId, direction)}
@@ -598,49 +598,79 @@ export function ResumeEditor() {
   );
 }
 
-function ModuleNavigator({ headerName, sections, activeTarget, onSelect }: {
+function ModuleNavigator({ headerName, sections, activeTarget, onSelect, onSectionMove, onSectionToggle, onSectionDelete }: {
   headerName: string;
   sections: ResumeSection[];
   activeTarget: string;
   onSelect: (target: string) => void;
+  onSectionMove: (direction: -1 | 1) => void;
+  onSectionToggle: () => void;
+  onSectionDelete: () => void;
 }) {
-  const targets = [
+  const contentTargets = [
     { id: HEADER_BLOCK_ID, title: "基本信息", visible: true },
     ...sections.map((section) => ({ id: section.id, title: section.title, visible: section.visible })),
-    { id: PAGE_STYLE_ID, title: "页面样式", visible: true },
   ];
+  const activeSectionIndex = sections.findIndex((section) => section.id === activeTarget);
+  const activeSection = activeSectionIndex >= 0 ? sections[activeSectionIndex] : null;
 
   return (
     <nav className="module-navigator" aria-label="简历模块导航">
-      <div className="module-track" role="tablist" aria-label={`${headerName || "当前简历"}的编辑模块`}>
-        {targets.map((target) => {
-          const active = target.id === activeTarget;
-          return (
-            <button
-              key={target.id}
-              className="module-tab"
-              type="button"
-              role="tab"
-              aria-selected={active}
-              data-active={active ? "true" : "false"}
-              data-visible={target.visible ? "true" : "false"}
-              onClick={() => onSelect(target.id)}
-            >
-              <span>{target.title}</span>
-            </button>
-          );
-        })}
-        <button
-          className="module-tab module-add-tab"
-          type="button"
-          role="tab"
-          aria-selected={activeTarget === ADD_MODULE_ID}
-          data-active={activeTarget === ADD_MODULE_ID ? "true" : "false"}
-          onClick={() => onSelect(ADD_MODULE_ID)}
-        >
-          <span aria-hidden="true">＋</span>
-          <span>添加</span>
-        </button>
+      <div className="module-track">
+        <div className="module-tab-strip" role="tablist" aria-label={`${headerName || "当前简历"}的编辑模块`}>
+          <button
+            className="module-tab module-system-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeTarget === PAGE_STYLE_ID}
+            data-active={activeTarget === PAGE_STYLE_ID ? "true" : "false"}
+            onClick={() => onSelect(PAGE_STYLE_ID)}
+          >
+            <span className="system-tab-icon" aria-hidden="true">Aa</span>
+            <span>页面样式</span>
+          </button>
+          <span className="module-divider" aria-hidden="true" />
+
+          {contentTargets.map((target) => {
+            const active = target.id === activeTarget;
+            return (
+              <button
+                key={target.id}
+                className="module-tab"
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-active={active ? "true" : "false"}
+                data-visible={target.visible ? "true" : "false"}
+                onClick={() => onSelect(target.id)}
+              >
+                <span>{target.title}</span>
+              </button>
+            );
+          })}
+
+          <span className="module-divider" aria-hidden="true" />
+          <button
+            className="module-tab module-add-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeTarget === ADD_MODULE_ID}
+            data-active={activeTarget === ADD_MODULE_ID ? "true" : "false"}
+            onClick={() => onSelect(ADD_MODULE_ID)}
+          >
+            <span aria-hidden="true">＋</span>
+            <span>添加</span>
+          </button>
+        </div>
+
+        {activeSection && (
+          <div className="module-context-actions" role="group" aria-label={`${activeSection.title}模块操作`}>
+            <button type="button" aria-label={`上移${activeSection.title}`} disabled={activeSectionIndex === 0} onClick={() => onSectionMove(-1)}>↑</button>
+            <button type="button" aria-label={`下移${activeSection.title}`} disabled={activeSectionIndex === sections.length - 1} onClick={() => onSectionMove(1)}>↓</button>
+            <button className="visibility-action" type="button" onClick={onSectionToggle}>{activeSection.visible ? "隐藏" : "显示"}</button>
+            {!activeSection.fixed && <button className="danger-action" type="button" onClick={onSectionDelete}>删除</button>}
+          </div>
+        )}
       </div>
     </nav>
   );
@@ -728,13 +758,10 @@ function HeaderEditor({ header, onChange, onPhotoChange, onPhotoError }: {
   );
 }
 
-function SectionEditor({ section, index, total, onChange, onMove, onDelete, onEntryChange, onEntryAdd, onEntryMove, onEntryDelete }: {
+function SectionEditor({ section, index, onChange, onEntryChange, onEntryAdd, onEntryMove, onEntryDelete }: {
   section: ResumeSection;
   index: number;
-  total: number;
   onChange: (patch: Partial<ResumeSection>) => void;
-  onMove: (direction: -1 | 1) => void;
-  onDelete: () => void;
   onEntryChange: (entryId: string, patch: Partial<ResumeEntry>) => void;
   onEntryAdd: () => void;
   onEntryMove: (entryId: string, direction: -1 | 1) => void;
@@ -749,12 +776,6 @@ function SectionEditor({ section, index, total, onChange, onMove, onDelete, onEn
             <input className="section-title-input" aria-label="模块标题" value={section.title} onChange={(event) => onChange({ title: event.target.value })} />
             <p>{section.kind === "text" ? "文本模块" : `${section.entries.length} 个经历条目`}</p>
           </div>
-        </div>
-        <div className="card-actions">
-          <button type="button" aria-label={`上移${section.title}`} disabled={index === 0} onClick={() => onMove(-1)}>↑</button>
-          <button type="button" aria-label={`下移${section.title}`} disabled={index === total - 1} onClick={() => onMove(1)}>↓</button>
-          <button type="button" onClick={() => onChange({ visible: !section.visible })}>{section.visible ? "隐藏" : "显示"}</button>
-          {!section.fixed && <button className="danger-action" type="button" onClick={onDelete}>删除</button>}
         </div>
       </header>
 

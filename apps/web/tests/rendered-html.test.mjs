@@ -26,6 +26,7 @@ test("server-renders the local resume editor shell", async () => {
   assert.match(html, /收起编辑栏/);
   assert.match(html, /简历模块导航/);
   assert.match(html, /页面样式/);
+  assert.ok(html.indexOf("页面样式") < html.indexOf("基本信息"));
   assert.match(html, /导出 PDF/);
   assert.match(html, /现代编号/);
   assert.match(html, /经典酒红/);
