@@ -39,7 +39,7 @@ export async function run(argv, io = process) {
     case "inspect":
       return inspectCommand(positionals[0] ?? DEFAULT_RESUME_PATH, options.json, io);
     case "dev":
-      return devCommand(options.port, io);
+      return devCommand(options.port, options["data-dir"], io);
     case "render":
       return browserCommand("png", positionals[0] ?? DEFAULT_RESUME_PATH, options, io);
     case "export":
@@ -104,10 +104,10 @@ async function inspectCommand(input, json, io) {
   return 0;
 }
 
-async function devCommand(portOption, io) {
+async function devCommand(portOption, dataDir, io) {
   const port = parsePort(portOption, 3000);
   io.stdout.write(`Starting AI Resume editor at http://127.0.0.1:${port}\n`);
-  const exitCode = await runEditorServer(port);
+  const exitCode = await runEditorServer(port, dataDir);
   if (exitCode !== 0) throw new Error(`editor exited with code ${exitCode}`);
   return exitCode;
 }
@@ -194,7 +194,7 @@ Usage:
   ai-resume init [directory] [--force]
   ai-resume validate [resume.json] [--json]
   ai-resume inspect [resume.json] [--json]
-  ai-resume dev [--port 3000]
+  ai-resume dev [--port 3000] [--data-dir .ai-resume-data]
   ai-resume render [resume.json] [--out resume.png] [--url URL] [--port 4173]
   ai-resume export [resume.json] [--out resume.pdf] [--url URL] [--port 4173]
   ai-resume install-skill [--agent all|codex|claude-code|deepseek-harness]

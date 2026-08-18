@@ -25,7 +25,7 @@
 大多数简历工具把内容锁在在线编辑器里，把“适配一页”简化成自动缩小字号。AI Resume 采用不同的边界：
 
 - **内容是结构化数据。** 素材库使用 Markdown，成稿使用可验证的 JSON。
-- **数据默认留在本地。** 首页简历库保存在浏览器本地存储，CLI 直接处理工作区文件。
+- **数据默认留在本地。** localhost 服务把简历库和素材落盘到 `.ai-resume-data/`，不同浏览器访问同一个本地服务即可共享。
 - **Agent 负责判断。** CLI 提供校验、渲染、利用率诊断和导出原子能力，不提供黑盒 `fit 1`。
 - **视觉结果必须检查。** Agent 查看真实 A4 PNG，判断密度、裁切、层级和留白后再迭代。
 - **PDF 导出可重复。** 使用 Playwright 与打印样式生成确定性 A4 PDF。
@@ -57,7 +57,8 @@
 git clone https://github.com/LosAveRoad/ai-resume.git
 cd ai-resume
 npm install
-npm run dev
+npm run build
+npm run cli -- dev
 ```
 
 打开 [http://localhost:3000](http://localhost:3000)。首页可以管理多份本地简历，并从以下起点创建：
@@ -66,7 +67,7 @@ npm run dev
 - Agent 工程师示例
 - 后端工程师示例
 
-所有首页草稿保存在当前浏览器的 `localStorage` 中。清除浏览器站点数据会删除这些草稿；需要版本控制或跨环境使用时，请采用下面的 CLI 文件工作流。
+首页通过 localhost 的 `/api/workspace` 读写共享工作区。默认数据目录是项目根目录下的 `.ai-resume-data/`，其中包含 `workspace.json` 和 `materials.md`；不同浏览器访问同一个端口会看到同一份简历库。旧版本浏览器里的 `localStorage` 数据会在共享库为空时自动迁移一次。需要版本控制或跨环境使用时，请采用下面的 CLI 文件工作流。
 
 ## CLI 与 Agent 工作流
 
