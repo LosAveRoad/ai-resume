@@ -320,7 +320,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     resumeRef.current = next;
     setResumeState(next);
     setHistoryStatus({ canUndo: true, canRedo: false });
-    setActiveShowcase(null);
   }, []);
 
   const undoResume = useCallback(() => {
@@ -330,7 +329,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     resumeRef.current = previous;
     setResumeState(previous);
     setHistoryStatus({ canUndo: historyRef.current.past.length > 0, canRedo: true });
-    setActiveShowcase(null);
   }, []);
 
   const redoResume = useCallback(() => {
@@ -340,7 +338,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
     resumeRef.current = next;
     setResumeState(next);
     setHistoryStatus({ canUndo: true, canRedo: historyRef.current.future.length > 0 });
-    setActiveShowcase(null);
   }, []);
 
   const activeTemplate = resume.presentation.activeTemplate;
@@ -384,7 +381,6 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack }: {
           resumeRef.current = loadedResume;
           setResumeState(loadedResume);
           setHistoryStatus({ canUndo: false, canRedo: false });
-          setActiveShowcase(null);
         }
       } catch {
         setNotice("本地草稿无法读取，已载入示例内容。");
