@@ -24,9 +24,29 @@ const STARTERS: Array<{ kind: StarterKind; label: string; description: string; t
 
 export function ResumeWorkspace() {
   const [records, setRecords] = useState<SavedResume[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => (
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("resume")
+  ));
   const [cliMode, setCliMode] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("editor") === "1") return;
+
+    const resumeId = params.get("resume");
+    window.history.replaceState(
+      { ...window.history.state, aiResumeView: resumeId ? "editor" : "home", resumeId },
+      "",
+      window.location.href,
+    );
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { aiResumeView?: string; resumeId?: string } | null;
+      setActiveId(state?.aiResumeView === "editor" && state.resumeId ? state.resumeId : null);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -77,12 +97,35 @@ export function ResumeWorkspace() {
     } : record));
   }, [activeId]);
 
+  const openResume = useCallback((resumeId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("editor");
+    url.searchParams.set("resume", resumeId);
+    url.hash = "";
+    window.history.pushState({ aiResumeView: "editor", resumeId }, "", url);
+    setActiveId(resumeId);
+  }, []);
+
+  const returnHome = useCallback(() => {
+    const state = window.history.state as { aiResumeView?: string } | null;
+    if (state?.aiResumeView === "editor") {
+      window.history.back();
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("resume");
+    url.hash = "top";
+    window.history.replaceState({ aiResumeView: "home" }, "", url);
+    setActiveId(null);
+  }, []);
+
   const createResume = (kind: StarterKind) => {
     const resume = kind === "blank" ? createBlankResume() : createShowcaseResume(kind);
     if (kind === "blank") resume.header.name = "未命名简历";
     const record = createRecord(resume, kind === "blank" ? "未命名简历" : `${kind === "agent" ? "Agent" : "后端"}方向简历`);
     setRecords((current) => [record, ...current]);
-    setActiveId(record.id);
+    openResume(record.id);
   };
 
   const deleteResume = (record: SavedResume) => {
@@ -92,7 +135,7 @@ export function ResumeWorkspace() {
 
   if (cliMode) return <ResumeEditor />;
   if (activeRecord) {
-    return <ResumeEditor key={activeRecord.id} initialResume={activeRecord.resume} onResumeChange={updateActiveResume} onBack={() => setActiveId(null)} />;
+    return <ResumeEditor key={activeRecord.id} initialResume={activeRecord.resume} onResumeChange={updateActiveResume} onBack={returnHome} />;
   }
 
   return (
@@ -153,7 +196,7 @@ export function ResumeWorkspace() {
           <div className="resume-card-grid">
             {records.map((record, index) => (
               <article className="resume-card" key={record.id}>
-                <button className="resume-card-open" type="button" onClick={() => setActiveId(record.id)} aria-label={`打开${record.title}`}>
+                <button className="resume-card-open" type="button" onClick={() => openResume(record.id)} aria-label={`打开${record.title}`}>
                   <div className={`resume-card-preview tone-${index % 3}`}>
                     <span className="preview-name" />
                     <span className="preview-role" />
@@ -167,7 +210,7 @@ export function ResumeWorkspace() {
                   </div>
                 </button>
                 <div className="resume-card-actions">
-                  <button type="button" onClick={() => setActiveId(record.id)}>继续编辑</button>
+                  <button type="button" onClick={() => openResume(record.id)}>继续编辑</button>
                   <button type="button" onClick={() => deleteResume(record)} aria-label={`删除${record.title}`}>删除</button>
                 </div>
               </article>
