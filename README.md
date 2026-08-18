@@ -57,7 +57,8 @@
 git clone https://github.com/LosAveRoad/ai-resume.git
 cd ai-resume
 npm install
-npm run dev
+npm run build
+npm run cli -- dev
 ```
 
 打开 [http://localhost:3000](http://localhost:3000)。首页可以管理多份本地简历，并从以下起点创建：
