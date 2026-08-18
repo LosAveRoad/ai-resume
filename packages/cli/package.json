@@ -1,0 +1,25 @@
+{
+  "name": "@ai-resume/cli",
+  "version": "0.1.0",
+  "description": "Local-first structured resume CLI for coding agents",
+  "type": "module",
+  "bin": {
+    "ai-resume": "bin/ai-resume.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "skill",
+    "web"
+  ],
+  "scripts": {
+    "prepack": "node scripts/bundle-web.mjs"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}

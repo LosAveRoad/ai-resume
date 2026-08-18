@@ -1,0 +1,89 @@
+basics:
+  name: '林晓'
+  label: 'AI Agent / 后端工程师'
+  email: 'linxiao@example.com'
+  phone: '+86 138 0000 0000'
+  url: 'https://example.com'
+  summary: '专注智能体基础设施与高并发后端系统，具备从原型、评测到生产部署的完整交付经验。'
+  location:
+    city: '上海'
+    countryCode: 'CN'
+  profiles:
+    - network: 'GitHub'
+      username: 'linxiao'
+      url: 'https://github.com/example'
+
+education:
+  - institution: '示例大学'
+    area: '计算机科学与技术'
+    studyType: '工学硕士'
+    startDate: '2020-09-01'
+    endDate: '2023-06-30'
+    score: 'GPA 3.8/4.0'
+
+skills:
+  - name: '智能体工程'
+    keywords:
+      - 'Agent Workflow'
+      - 'RAG'
+      - 'MCP'
+      - '模型评测'
+  - name: '后端与基础设施'
+    keywords:
+      - 'TypeScript'
+      - 'Python'
+      - 'Go'
+      - 'PostgreSQL'
+      - 'Redis'
+      - 'Docker'
+
+work:
+  - name: '星云科技'
+    position: '后端工程师'
+    startDate: '2023-07-01'
+    summary: '负责智能体平台的任务编排、工具调用和可观测性建设。'
+    highlights:
+      - '设计可恢复的任务执行引擎，将长任务失败后的平均恢复时间从 30 分钟降低至 3 分钟。'
+      - '建设模型调用追踪与评测流水线，覆盖 40 余个关键场景并支持版本回归。'
+      - '通过缓存、批处理和异步队列优化高峰吞吐，核心接口 P95 延迟下降 46%。'
+  - name: '云帆实验室'
+    position: '研发实习生'
+    startDate: '2022-06-01'
+    endDate: '2022-12-31'
+    summary: '参与知识库检索服务和数据处理流水线开发。'
+    highlights:
+      - '实现文档切分、索引与召回链路，支持百万级知识片段的增量更新。'
+      - '补充自动化测试和运行指标，使线上问题定位时间缩短约 35%。'
+
+projects:
+  - name: 'AgentBench Local'
+    description: '面向 coding agent 的本地任务评测与回放工具。'
+    highlights:
+      - '使用容器隔离任务执行环境，并记录命令、文件差异和评测结果。'
+      - '提供 JSONL 事件流和 CLI 接口，可接入多种 coding agent。'
+    keywords:
+      - 'TypeScript'
+      - 'Playwright'
+      - 'Docker'
+    startDate: '2024-03-01'
+  - name: 'Resume Knowledge Base'
+    description: '用于管理经历原料并按岗位组合简历的本地工具。'
+    highlights:
+      - '以结构化数据保存项目、经历和技能，支持派生岗位版本。'
+      - '使用浏览器打印引擎生成可检索文本的 A4 PDF。'
+    keywords:
+      - 'React'
+      - 'JSON Schema'
+      - 'Chromium'
+    startDate: '2025-01-01'
+
+certificates:
+  - name: '云原生技术认证'
+    date: '2024-06-01'
+    issuer: '示例认证机构'
+
+awards:
+  - title: '全国大学生系统能力竞赛二等奖'
+    date: '2022-08-01'
+    awarder: '竞赛组委会'
+    summary: '负责服务端架构、性能优化与部署。'

@@ -1,0 +1,103 @@
+{
+  "version": 2,
+  "header": {
+    "name": "你的姓名",
+    "role": "目标职位",
+    "phone": "+86 138 0000 0000",
+    "email": "you@example.com",
+    "location": "城市",
+    "website": "github.com/your-name"
+  },
+  "layout": {
+    "fontSize": 10,
+    "lineHeight": 1.5,
+    "marginX": 14,
+    "marginY": 14,
+    "sectionGap": 8
+  },
+  "sections": [
+    {
+      "id": "education",
+      "title": "教育背景",
+      "kind": "entries",
+      "visible": true,
+      "fixed": true,
+      "text": "",
+      "entries": [
+        {
+          "id": "education-1",
+          "title": "学校名称",
+          "subtitle": "专业 · 学位",
+          "startDate": "2020.09",
+          "endDate": "2024.06",
+          "location": "城市",
+          "details": "- 填写与岗位有关的课程、成绩或研究经历"
+        }
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "专业技能",
+      "kind": "text",
+      "visible": true,
+      "fixed": true,
+      "text": "- **编程语言：** 填写真实技能\n- **工程能力：** 填写真实技能",
+      "entries": []
+    },
+    {
+      "id": "work",
+      "title": "工作经历",
+      "kind": "entries",
+      "visible": false,
+      "fixed": true,
+      "text": "",
+      "entries": []
+    },
+    {
+      "id": "internship",
+      "title": "实习经历",
+      "kind": "entries",
+      "visible": false,
+      "fixed": true,
+      "text": "",
+      "entries": []
+    },
+    {
+      "id": "projects",
+      "title": "项目经历",
+      "kind": "entries",
+      "visible": true,
+      "fixed": true,
+      "text": "",
+      "entries": [
+        {
+          "id": "project-1",
+          "title": "项目名称",
+          "subtitle": "你的角色",
+          "startDate": "2024.01",
+          "endDate": "2024.06",
+          "location": "",
+          "details": "1. 描述你解决的真实问题和采取的行动\n2. 用可核验的数字说明结果，不要编造指标"
+        }
+      ]
+    },
+    {
+      "id": "honors",
+      "title": "荣誉证书",
+      "kind": "text",
+      "visible": false,
+      "fixed": true,
+      "text": "",
+      "entries": []
+    },
+    {
+      "id": "summary",
+      "title": "自我评价",
+      "kind": "text",
+      "visible": true,
+      "fixed": true,
+      "text": "用两句话概括与目标岗位最相关的真实优势。",
+      "entries": []
+    }
+  ]
+}

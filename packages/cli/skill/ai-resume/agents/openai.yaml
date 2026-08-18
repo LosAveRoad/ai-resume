@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Resume"
+  short_description: "Build and visually refine tailored one-page resumes"
+  default_prompt: "Use $ai-resume to tailor my resume for this role and export a visually verified PDF."

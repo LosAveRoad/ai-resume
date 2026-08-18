@@ -1,0 +1,23 @@
+{
+  "name": "ai-resume",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/cli"
+  ],
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "cli": "node packages/cli/bin/ai-resume.mjs",
+    "test": "npm run test:web && npm run test:cli",
+    "test:web": "npm --prefix apps/web test",
+    "test:cli": "node --test packages/cli/test/cli.test.mjs",
+    "test:cli:e2e": "node --test packages/cli/test/browser.test.mjs",
+    "lint": "npm --prefix apps/web run lint",
+    "export:pdf": "node packages/cli/bin/ai-resume.mjs export"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

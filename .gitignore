@@ -1,0 +1,9 @@
+node_modules/
+tmp/
+output/
+.resuml-dev/
+dist/
+.next/
+.wrangler/
+.env*
+packages/cli/web/
