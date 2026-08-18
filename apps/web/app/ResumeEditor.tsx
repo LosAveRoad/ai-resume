@@ -3,6 +3,7 @@
 import {
   Fragment,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -26,6 +27,7 @@ const LEGACY_DOCUMENT_KEY = "ai-resume.document.v1";
 const LEGACY_MARKDOWN_KEY = "ai-resume.markdown.v1";
 const LEGACY_LAYOUT_KEY = "ai-resume.layout.v1";
 const HEADER_BLOCK_ID = "__header";
+const ADD_MODULE_ID = "__add-module";
 
 type PhotoData = {
   src: string;
@@ -244,6 +246,7 @@ export function ResumeEditor() {
   const [pages, setPages] = useState<string[][]>([[HEADER_BLOCK_ID]]);
   const [oversizedSection, setOversizedSection] = useState(false);
   const [notice, setNotice] = useState("");
+  const [activeEditorTarget, setActiveEditorTarget] = useState(HEADER_BLOCK_ID);
   const measureRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLElement>(null);
@@ -255,6 +258,10 @@ export function ResumeEditor() {
     () => resume.sections.filter((section) => section.visible),
     [resume.sections],
   );
+  const resolvedEditorTarget = activeEditorTarget === HEADER_BLOCK_ID || activeEditorTarget === ADD_MODULE_ID || resume.sections.some((section) => section.id === activeEditorTarget)
+    ? activeEditorTarget
+    : HEADER_BLOCK_ID;
+  const activeEditorSection = resume.sections.find((section) => section.id === resolvedEditorTarget);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -385,11 +392,18 @@ export function ResumeEditor() {
       entries: kind === "entries" ? [createBlankEntry()] : [],
     };
     setResume((current) => ({ ...current, sections: [...current.sections, section] }));
+    setActiveEditorTarget(section.id);
     setNotice("已添加自选模块。");
   };
 
   const deleteSection = (sectionId: string) => {
     setResume((current) => ({ ...current, sections: current.sections.filter((section) => section.id !== sectionId) }));
+    setActiveEditorTarget(HEADER_BLOCK_ID);
+  };
+
+  const selectEditorTarget = (target: string) => {
+    setActiveEditorTarget(target);
+    window.requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   const updateEntry = (sectionId: string, entryId: string, patch: Partial<ResumeEntry>) => {
@@ -438,6 +452,7 @@ export function ResumeEditor() {
         ? parseLegacyMarkdown(content, activeLayout)
         : normalizeResume(JSON.parse(content));
       setResume(imported);
+      setActiveEditorTarget(HEADER_BLOCK_ID);
       setNotice("简历内容已载入。");
     } catch {
       setNotice("导入失败：请选择有效的 Markdown 或简历 JSON。");
@@ -457,6 +472,7 @@ export function ResumeEditor() {
   const resetResume = () => {
     if (!window.confirm("恢复示例会覆盖当前本地草稿，继续吗？")) return;
     setResume(DEFAULT_RESUME);
+    setActiveEditorTarget(HEADER_BLOCK_ID);
     setNotice("已恢复示例内容。");
   };
 
@@ -481,7 +497,7 @@ export function ResumeEditor() {
 
         <div className="app-actions">
           <div className="save-state"><span aria-hidden="true" />{hydrated ? "已保存在本地" : "正在载入"}</div>
-          <button className="ghost-button" type="button" onClick={() => editorRef.current?.scrollIntoView({ behavior: "smooth" })}>结构化编辑</button>
+          <button className="ghost-button" type="button" onClick={() => selectEditorTarget(resolvedEditorTarget)}>结构化编辑</button>
           <button className="ghost-button" type="button" onClick={() => importRef.current?.click()}>导入</button>
           <button className="ghost-button action-secondary" type="button" onClick={exportMarkdown}>导出 MD</button>
           <button className="ghost-button action-secondary" type="button" onClick={exportJson}>JSON</button>
@@ -521,47 +537,58 @@ export function ResumeEditor() {
         </div>
       </section>
 
+      <ModuleNavigator
+        headerName={resume.header.name}
+        sections={resume.sections}
+        activeTarget={resolvedEditorTarget}
+        onSelect={selectEditorTarget}
+      />
+
       <section className="editor-zone" ref={editorRef}>
         <div className="editor-shell">
           <header className="editor-heading">
             <div>
-              <p className="eyebrow">STRUCTURED CONTENT</p>
-              <h2>结构化编辑器</h2>
-              <p>仍然通过模块和条目组织简历；Markdown 只在段落与经历描述内部生效。</p>
+              <p className="eyebrow">ACTIVE MODULE</p>
+              <h2>{resolvedEditorTarget === HEADER_BLOCK_ID ? "基本信息" : resolvedEditorTarget === ADD_MODULE_ID ? "添加模块" : activeEditorSection?.title}</h2>
+              <p>当前只编辑一个模块；内容会即时同步到上方简历预览。</p>
             </div>
             <span className="syntax-badge">FIELD-LEVEL MD</span>
           </header>
 
           <div className="structured-editor">
             <div className="content-editor">
-              <HeaderEditor header={resume.header} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
+              {resolvedEditorTarget === HEADER_BLOCK_ID && (
+                <HeaderEditor header={resume.header} onChange={updateHeader} onPhotoChange={updatePhoto} onPhotoError={setNotice} />
+              )}
 
-              {resume.sections.map((section, sectionIndex) => (
+              {activeEditorSection && (
                 <SectionEditor
-                  key={section.id}
-                  section={section}
-                  index={sectionIndex}
+                  key={activeEditorSection.id}
+                  section={activeEditorSection}
+                  index={resume.sections.findIndex((section) => section.id === activeEditorSection.id)}
                   total={resume.sections.length}
-                  onChange={(patch) => updateSection(section.id, patch)}
-                  onMove={(direction) => moveSection(section.id, direction)}
-                  onDelete={() => deleteSection(section.id)}
-                  onEntryChange={(entryId, patch) => updateEntry(section.id, entryId, patch)}
-                  onEntryAdd={() => addEntry(section.id)}
-                  onEntryMove={(entryId, direction) => moveEntry(section.id, entryId, direction)}
-                  onEntryDelete={(entryId) => deleteEntry(section.id, entryId)}
+                  onChange={(patch) => updateSection(activeEditorSection.id, patch)}
+                  onMove={(direction) => moveSection(activeEditorSection.id, direction)}
+                  onDelete={() => deleteSection(activeEditorSection.id)}
+                  onEntryChange={(entryId, patch) => updateEntry(activeEditorSection.id, entryId, patch)}
+                  onEntryAdd={() => addEntry(activeEditorSection.id)}
+                  onEntryMove={(entryId, direction) => moveEntry(activeEditorSection.id, entryId, direction)}
+                  onEntryDelete={(entryId) => deleteEntry(activeEditorSection.id, entryId)}
                 />
-              ))}
+              )}
 
-              <div className="add-module-card">
-                <div>
-                  <strong>添加自选模块</strong>
-                  <p>文本模块适合简介、技能与证书；经历模块包含标题、时间和多个条目。</p>
+              {resolvedEditorTarget === ADD_MODULE_ID && (
+                <div className="add-module-card is-active-panel">
+                  <div>
+                    <strong>添加自选模块</strong>
+                    <p>文本模块适合简介、技能与证书；经历模块包含标题、时间和多个条目。</p>
+                  </div>
+                  <div className="add-module-actions">
+                    <button type="button" onClick={() => addSection("text")}>＋ 文本模块</button>
+                    <button type="button" onClick={() => addSection("entries")}>＋ 经历模块</button>
+                  </div>
                 </div>
-                <div className="add-module-actions">
-                  <button type="button" onClick={() => addSection("text")}>＋ 文本模块</button>
-                  <button type="button" onClick={() => addSection("entries")}>＋ 经历模块</button>
-                </div>
-              </div>
+              )}
             </div>
 
             <aside className="layout-panel">
@@ -596,6 +623,55 @@ export function ResumeEditor() {
 
       {notice && <div className="toast" role="status">{notice}</div>}
     </main>
+  );
+}
+
+function ModuleNavigator({ headerName, sections, activeTarget, onSelect }: {
+  headerName: string;
+  sections: ResumeSection[];
+  activeTarget: string;
+  onSelect: (target: string) => void;
+}) {
+  const targets = [
+    { id: HEADER_BLOCK_ID, title: "基本信息", visible: true },
+    ...sections.map((section) => ({ id: section.id, title: section.title, visible: section.visible })),
+  ];
+
+  return (
+    <nav className="module-navigator" aria-label="简历模块导航">
+      <div className="module-track" role="tablist" aria-label={`${headerName || "当前简历"}的编辑模块`}>
+        {targets.map((target) => {
+          const active = target.id === activeTarget;
+          return (
+            <button
+              key={target.id}
+              className="module-tab"
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-active={active ? "true" : "false"}
+              data-visible={target.visible ? "true" : "false"}
+              onClick={() => onSelect(target.id)}
+            >
+              <span className="module-status" aria-hidden="true" />
+              <span>{target.title}</span>
+              {active && <span className="module-edit-mark" aria-hidden="true">✎</span>}
+            </button>
+          );
+        })}
+        <button
+          className="module-tab module-add-tab"
+          type="button"
+          role="tab"
+          aria-selected={activeTarget === ADD_MODULE_ID}
+          data-active={activeTarget === ADD_MODULE_ID ? "true" : "false"}
+          onClick={() => onSelect(ADD_MODULE_ID)}
+        >
+          <span className="module-add-icon" aria-hidden="true">＋</span>
+          <span>添加模块</span>
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -749,11 +825,65 @@ function TextField({ label, value, onChange }: { label: string; value: string; o
 }
 
 function MarkdownField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const fieldId = useId();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const applyMarkdown = (action: "bold" | "bullet" | "ordered" | "outdent" | "indent") => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    let replaceStart = selectionStart;
+    let replaceEnd = selectionEnd;
+    let replacement = "";
+    let nextSelectionStart = selectionStart;
+    let nextSelectionEnd = selectionEnd;
+
+    if (action === "bold") {
+      const selected = value.slice(selectionStart, selectionEnd) || "粗体";
+      replacement = `**${selected}**`;
+      nextSelectionStart = selectionStart + 2;
+      nextSelectionEnd = nextSelectionStart + selected.length;
+    } else {
+      replaceStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+      const followingBreak = value.indexOf("\n", selectionEnd);
+      replaceEnd = followingBreak === -1 ? value.length : followingBreak;
+      const lines = value.slice(replaceStart, replaceEnd).split("\n");
+      replacement = lines.map((line, lineIndex) => {
+        if (action === "indent") return `  ${line}`;
+        if (action === "outdent") return line.replace(/^(?: {1,2}|\t)/, "");
+        const indentation = line.match(/^\s*/)?.[0] || "";
+        const content = line.slice(indentation.length).replace(/^(?:[-*+]|\d+\.)\s+/, "");
+        return `${indentation}${action === "bullet" ? "-" : `${lineIndex + 1}.`} ${content}`;
+      }).join("\n");
+      nextSelectionStart = replaceStart;
+      nextSelectionEnd = replaceStart + replacement.length;
+    }
+
+    const nextValue = `${value.slice(0, replaceStart)}${replacement}${value.slice(replaceEnd)}`;
+    onChange(nextValue);
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+    });
+  };
+
   return (
-    <label className="markdown-field">
-      <span><b>{label}</b><em>支持 1. / - / **粗体** / `code` / [链接](url)</em></span>
-      <textarea aria-label={label} spellCheck={false} value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
+    <div className="markdown-field">
+      <span className="markdown-field-label"><label htmlFor={fieldId}>{label}</label><em>Markdown 内容</em></span>
+      <div className="markdown-editor-frame">
+        <div className="markdown-toolbar" role="toolbar" aria-label={`${label}格式工具`}>
+          <button type="button" aria-label="加粗" title="加粗" onClick={() => applyMarkdown("bold")}><b>B</b></button>
+          <button type="button" aria-label="无序列表" title="无序列表" onClick={() => applyMarkdown("bullet")}>•</button>
+          <button type="button" aria-label="有序列表" title="有序列表" onClick={() => applyMarkdown("ordered")}>1.</button>
+          <span className="toolbar-divider" aria-hidden="true" />
+          <button type="button" aria-label="减少缩进" title="减少缩进" onClick={() => applyMarkdown("outdent")}>←</button>
+          <button type="button" aria-label="增加缩进" title="增加缩进" onClick={() => applyMarkdown("indent")}>→</button>
+          <span className="toolbar-hint">支持 **粗体**、列表、`code` 与链接</span>
+        </div>
+        <textarea ref={textareaRef} id={fieldId} aria-label={label} spellCheck={false} value={value} onChange={(event) => onChange(event.target.value)} />
+      </div>
+    </div>
   );
 }
 
