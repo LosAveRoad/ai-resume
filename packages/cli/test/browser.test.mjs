@@ -17,7 +17,7 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
   const pdf = join(root, "airesume", "output", "resume.pdf");
 
   const resume = JSON.parse(await readFile(input, "utf8"));
-  const templateIds = ["numbered-rail", "classic-burgundy", "campus-navy"];
+  const templateIds = ["numbered-rail", "classic-burgundy", "campus-navy", "soft-gray", "blue-line"];
   for (const [index, templateId] of templateIds.entries()) {
     resume.presentation.activeTemplate = templateId;
     await writeFile(input, JSON.stringify(resume, null, 2));
@@ -29,7 +29,7 @@ test("CLI renders a visual preview and exports a PDF through the real editor", {
     assert.ok((await stat(preview)).size > 10_000);
   }
 
-  const exported = runCli(["export", input, "--out", pdf, "--port", "43174"]);
+  const exported = runCli(["export", input, "--out", pdf, "--port", "43180"]);
   assertSuccess(exported);
   assert.match(exported.stdout, /Rendered page count: 1/);
   assert.match(exported.stdout, /Page utilization: \d+%/);

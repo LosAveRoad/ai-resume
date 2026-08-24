@@ -299,7 +299,7 @@ export function ResumeWorkspace() {
             <a href="#resumes">查看我的简历 <span>↓</span></a>
           </div>
           <dl className="workspace-metrics">
-            <div><dt>3</dt><dd>内置 A4 模板</dd></div>
+            <div><dt>5</dt><dd>内置 A4 模板</dd></div>
             <div><dt>100%</dt><dd>本地工作区保存</dd></div>
             <div><dt>CLI</dt><dd>Agent 原生工作流</dd></div>
           </dl>

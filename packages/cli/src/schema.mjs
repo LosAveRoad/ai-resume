@@ -3,7 +3,14 @@ import { resolve } from "node:path";
 
 const HEADER_FIELDS = ["name", "role", "phone", "email", "location", "website"];
 const ENTRY_FIELDS = ["id", "title", "subtitle", "startDate", "endDate", "location", "details"];
-const TEMPLATE_IDS = ["numbered-rail", "classic-burgundy", "campus-navy"];
+const TEMPLATE_IDS = ["numbered-rail", "classic-burgundy", "campus-navy", "soft-gray", "blue-line"];
+const DEFAULT_LAYOUTS = {
+  "numbered-rail": { fontSize: 9.25, lineHeight: 1.45, marginX: 11, marginY: 10, sectionGap: 6 },
+  "classic-burgundy": { fontSize: 8.5, lineHeight: 1.38, marginX: 15, marginY: 8, sectionGap: 3 },
+  "campus-navy": { fontSize: 8.5, lineHeight: 1.32, marginX: 10, marginY: 8, sectionGap: 3 },
+  "soft-gray": { fontSize: 8.75, lineHeight: 1.35, marginX: 13, marginY: 9, sectionGap: 4 },
+  "blue-line": { fontSize: 8.7, lineHeight: 1.35, marginX: 12, marginY: 10, sectionGap: 5 },
+};
 const LAYOUT_BOUNDS = {
   fontSize: [8.25, 11.5],
   lineHeight: [1.2, 1.7],
@@ -190,9 +197,16 @@ function requireBoolean(value, path, errors) {
 
 function migrateResume(value) {
   if (!isObject(value)) return value;
-  if (typeof value.title === "string" && value.title.trim()) return value;
+  const presentation = isObject(value.presentation)
+    ? {
+        ...value.presentation,
+        layouts: { ...DEFAULT_LAYOUTS, ...(isObject(value.presentation.layouts) ? value.presentation.layouts : {}) },
+      }
+    : value.presentation;
+  if (typeof value.title === "string" && value.title.trim() && presentation === value.presentation) return value;
   return {
     ...value,
     title: typeof value.header?.name === "string" && value.header.name.trim() ? value.header.name : "未命名简历",
+    presentation,
   };
 }

@@ -16,7 +16,7 @@ The editor consumes JSON version 3. Keep every listed property present, even whe
     "photo": null
   },
   "presentation": {
-    "activeTemplate": "numbered-rail",
+    "activeTemplate": "soft-gray",
     "layouts": {
       "numbered-rail": {
         "fontSize": 9.25,
@@ -38,6 +38,20 @@ The editor consumes JSON version 3. Keep every listed property present, even whe
         "marginX": 10,
         "marginY": 8,
         "sectionGap": 3
+      },
+      "soft-gray": {
+        "fontSize": 8.75,
+        "lineHeight": 1.35,
+        "marginX": 13,
+        "marginY": 9,
+        "sectionGap": 4
+      },
+      "blue-line": {
+        "fontSize": 8.7,
+        "lineHeight": 1.35,
+        "marginX": 12,
+        "marginY": 10,
+        "sectionGap": 5
       }
     }
   },
@@ -52,7 +66,7 @@ Layout ranges enforced by the CLI and editor:
 - `marginX`, `marginY`: 8–24 mm
 - `sectionGap`: 3–16 px
 
-`activeTemplate` must be `numbered-rail`, `classic-burgundy`, or `campus-navy`. Each template keeps its own layout values so switching away and back does not discard visual tuning. Modify the layout under `presentation.layouts[activeTemplate]` when visually refining the active template.
+`activeTemplate` must be `numbered-rail`, `classic-burgundy`, `campus-navy`, `soft-gray`, or `blue-line`. New resumes default to `soft-gray`. Each template keeps its own layout values so switching away and back does not discard visual tuning. Modify the layout under `presentation.layouts[activeTemplate]` when visually refining the active template.
 
 `title` is the local workspace name for this resume variant. It is not printed as the candidate's name; `header.name` controls the printed name. Older version 3 files without `title` are migrated from `header.name` during CLI validation and workspace import.
 
@@ -67,7 +81,7 @@ Layout ranges enforced by the CLI and editor:
 }
 ```
 
-`positionX` and `positionY` range from 0–100; `zoom` ranges from 1–2. The same photo crop is shared by every template while each template controls its frame size and grayscale treatment.
+`positionX` and `positionY` range from 0–100; `zoom` ranges from 1–2. The same color photo crop is shared by every template while each template controls its frame size.
 
 Each section has this shape:
 
@@ -100,6 +114,8 @@ Use `kind: "entries"` for education, work, internships, and projects. Keep `text
 ```
 
 Section IDs must be unique across the document. Entry IDs must be unique within their section. The conventional fixed IDs are `education`, `skills`, `work`, `internship`, `projects`, `honors`, and `summary`; custom sections may use any other stable kebab-case ID.
+
+`location` remains accepted for backwards-compatible JSON, but the current visual templates do not print the location label in the resume heading. Use the header `website` or a Markdown link when a URL should be clickable.
 
 Supported field-level Markdown is intentionally small:
 

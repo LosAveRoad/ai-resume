@@ -35,9 +35,26 @@ test("workspace creates, edits, and lists a local resume", { timeout: 90_000 }, 
   assert.equal(await page.getByRole("button", { name: "创建第一份简历" }).isVisible(), true);
   await page.getByRole("button", { name: "创建第一份简历" }).click();
   await page.waitForSelector('[data-preview-ready="true"]');
+  assert.equal(await page.locator(".page-wrap .resume-page").first().getAttribute("data-template"), "soft-gray");
   assert.equal(await page.getByText("简历预览", { exact: true }).isVisible(), true);
   assert.equal(await page.getByText("案例速览", { exact: true }).count(), 0);
   await page.getByLabel("简历名称").fill("我的后端求职简历");
+  await page.getByLabel("主页").fill("github.com/example");
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('.page-wrap a[href="https://github.com/example"]').count(), 1);
+  await page.locator(".module-system-tab").click();
+  await page.locator('[data-template-card="soft-gray"]').click();
+  await page.waitForSelector('.page-wrap .resume-page[data-template="soft-gray"]');
+  await page.locator(".module-tab").filter({ hasText: "项目经历" }).click();
+  const entry = page.locator("[data-entry-editor]").first();
+  await entry.getByLabel("角色 / 专业").fill("");
+  await entry.getByLabel("开始时间").fill("");
+  await entry.getByLabel("结束时间").fill("2026.06");
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator(".page-wrap .entry-heading-count-2").count() > 0, true);
+  await entry.getByLabel("结束时间").fill("");
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator(".page-wrap .entry-heading-count-1").count() > 0, true);
 
   await page.getByRole("link", { name: "返回 AI Resume 首页" }).click();
   assert.equal(await page.locator(".resume-card").count(), 1);

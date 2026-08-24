@@ -285,7 +285,7 @@ export function ResumeEditor({ initialResume, onResumeChange, onBack, onExport, 
   onExport?: () => void | Promise<void>;
   saveState?: SaveState;
 } = {}) {
-  const startingResume = initialResume ? cloneResume(initialResume) : DEFAULT_RESUME;
+  const startingResume = initialResume ? normalizeResume(initialResume) : DEFAULT_RESUME;
   const managedResumeRef = useRef(Boolean(initialResume));
   const [resume, setResumeState] = useState<ResumeDocument>(() => startingResume);
   const [hydrated, setHydrated] = useState(false);
@@ -807,7 +807,6 @@ function HeaderEditor({ title, header, onTitleChange, onChange, onPhotoChange, o
         <TextField label="求职方向" value={header.role} onChange={(value) => onChange("role", value)} />
         <TextField label="电话" value={header.phone} onChange={(value) => onChange("phone", value)} />
         <TextField label="邮箱" value={header.email} onChange={(value) => onChange("email", value)} />
-        <TextField label="城市" value={header.location} onChange={(value) => onChange("location", value)} />
         <TextField label="主页" value={header.website} onChange={(value) => onChange("website", value)} />
       </div>
       <div className="photo-editor">
@@ -905,7 +904,6 @@ function EntryEditor({ entry, index, total, onChange, onMove, onDelete }: {
         <TextField label="角色 / 专业" value={entry.subtitle} onChange={(value) => onChange({ subtitle: value })} />
         <TextField label="开始时间" value={entry.startDate} onChange={(value) => onChange({ startDate: value })} />
         <TextField label="结束时间" value={entry.endDate} onChange={(value) => onChange({ endDate: value })} />
-        <TextField label="地点" value={entry.location} onChange={(value) => onChange({ location: value })} />
       </div>
       <MarkdownField label="经历描述" value={entry.details} onChange={(value) => onChange({ details: value })} />
     </section>
@@ -1054,7 +1052,6 @@ function ResumeHeader({ header, measure = false }: { header: HeaderData; measure
       <div className="resume-contact" data-part="contacts">
         {header.phone && <ContactItem kind="phone" label="手机" value={header.phone} />}
         {header.email && <ContactItem kind="email" label="邮箱" value={header.email} />}
-        {header.location && <ContactItem kind="location" label="地点" value={header.location} />}
         {header.website && <ContactItem kind="website" label="主页" value={header.website} />}
       </div>
     </header>
@@ -1072,12 +1069,15 @@ function ResumePhoto({ photo, alt, preview = false }: { photo: PhotoData; alt: s
   return <span className={`resume-photo${preview ? " is-preview" : ""}`} style={style}><img src={photo.src} alt={alt} /></span>;
 }
 
-function ContactItem({ kind, label, value }: { kind: "phone" | "email" | "location" | "website"; label: string; value: string }) {
+function ContactItem({ kind, label, value }: { kind: "phone" | "email" | "website"; label: string; value: string }) {
+  const content = kind === "website"
+    ? <a href={toExternalHref(value)}>{value}</a>
+    : value;
   return (
     <span className="contact-item" data-contact={kind}>
       <i className="contact-icon" aria-hidden="true" />
       <b>{label}：</b>
-      <span>{value}</span>
+      <span>{content}</span>
     </span>
   );
 }
@@ -1128,17 +1128,13 @@ function ResumeSectionView({ section, index, measure = false }: { section: Resum
 
 function ResumeEntryView({ entry }: { entry: ResumeEntry }) {
   const dates = [entry.startDate, entry.endDate].filter(Boolean).join(" — ");
+  const headingItems = [entry.title, entry.subtitle, dates].filter((item) => item.trim());
   return (
     <article className="resume-entry">
-      <div className="entry-heading">
-        <div className="entry-title-group">
-          <strong>{entry.title || "未命名"}</strong>
-          {entry.subtitle && <span>{entry.subtitle}</span>}
-        </div>
-        <div className="entry-meta">
-          {dates && <span>{dates}</span>}
-          {entry.location && <em>{entry.location}</em>}
-        </div>
+      <div className={`entry-heading entry-heading-count-${Math.min(3, headingItems.length)}`}>
+        {entry.title.trim() && <strong className="entry-title">{entry.title}</strong>}
+        {entry.subtitle.trim() && <span className="entry-subtitle">{entry.subtitle}</span>}
+        {dates && <span className="entry-date">{dates}</span>}
       </div>
       <MarkdownBlocks value={entry.details} />
     </article>
@@ -1279,6 +1275,10 @@ function moveItem<T extends { id: string }>(items: T[], id: string, direction: -
 }
 
 function isSafeLink(value: string) { return /^(https?:\/\/|mailto:)/i.test(value); }
+function toExternalHref(value: string) {
+  const trimmed = value.trim();
+  return /^(?:https?:\/\/|mailto:)/i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
 
 async function fileToDataUrl(file: File) {
   const source = await new Promise<string>((resolve, reject) => {
@@ -1308,7 +1308,6 @@ async function fileToDataUrl(file: File) {
 
 function numberOr(value: unknown, fallback: number) { return typeof value === "number" && Number.isFinite(value) ? value : fallback; }
 function clamp(value: number, minimum: number, maximum: number) { return Math.min(maximum, Math.max(minimum, value)); }
-function cloneResume(resume: ResumeDocument): ResumeDocument { return JSON.parse(JSON.stringify(resume)) as ResumeDocument; }
 function saveStateLabel(state: SaveState) {
   return {
     loading: "正在载入",

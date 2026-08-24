@@ -11,7 +11,7 @@
     "photo": null
   },
   "presentation": {
-    "activeTemplate": "numbered-rail",
+    "activeTemplate": "soft-gray",
     "layouts": {
       "numbered-rail": {
         "fontSize": 9.25,
@@ -33,6 +33,20 @@
         "marginX": 10,
         "marginY": 8,
         "sectionGap": 3
+      },
+      "soft-gray": {
+        "fontSize": 8.75,
+        "lineHeight": 1.35,
+        "marginX": 13,
+        "marginY": 9,
+        "sectionGap": 4
+      },
+      "blue-line": {
+        "fontSize": 8.7,
+        "lineHeight": 1.35,
+        "marginX": 12,
+        "marginY": 10,
+        "sectionGap": 5
       }
     }
   },

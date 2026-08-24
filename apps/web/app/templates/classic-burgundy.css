@@ -37,7 +37,6 @@
   height: 31mm;
   border: .2mm solid #555;
 }
-.resume-page[data-template="classic-burgundy"] .resume-photo img { filter: grayscale(1) contrast(1.05); }
 .resume-page[data-template="classic-burgundy"] .resume-contact {
   grid-area: contacts;
   display: flex;
@@ -102,7 +101,7 @@
   border-top: .2mm dashed #a8a8a8;
 }
 .resume-page[data-template="classic-burgundy"] .entry-heading { margin-bottom: .8mm; }
-.resume-page[data-template="classic-burgundy"] .entry-title-group strong { font-size: 9pt; }
-.resume-page[data-template="classic-burgundy"] .entry-title-group > span { font-size: 8pt; }
-.resume-page[data-template="classic-burgundy"] .entry-meta { color: #333; font-size: 7.6pt; }
+.resume-page[data-template="classic-burgundy"] .entry-title { font-size: 9pt; }
+.resume-page[data-template="classic-burgundy"] .entry-subtitle { font-size: 8pt; }
+.resume-page[data-template="classic-burgundy"] .entry-date { color: #333; font-size: 7.6pt; }
 .resume-page[data-template="classic-burgundy"] .page-number { display: none; }

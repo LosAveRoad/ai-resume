@@ -1,0 +1,186 @@
+.resume-page[data-template="blue-line"] {
+  --template-accent: #397bb8;
+  --template-ink: #22272d;
+  color: #2f3338;
+  font-family: Georgia, "Times New Roman", "Noto Serif SC", SimSun, serif;
+}
+
+.resume-page[data-template="blue-line"] .resume-header {
+  min-height: 44mm;
+  padding: 0 0 6mm;
+  display: grid;
+  grid-template-areas: "identity contacts photo";
+  grid-template-columns: 42mm minmax(0, 1fr) 27mm;
+  align-items: end;
+  column-gap: 7mm;
+  border-top: .35mm solid #dedede;
+}
+
+.resume-page[data-template="blue-line"] .name-lockup {
+  grid-area: identity;
+  align-self: end;
+}
+
+.resume-page[data-template="blue-line"] .resume-header h2 {
+  color: #b6b8ba;
+  font-size: 25pt;
+  font-weight: 400;
+  line-height: .95;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.resume-page[data-template="blue-line"] .resume-role {
+  margin-top: 4mm;
+  color: var(--template-accent);
+  font-size: 13pt;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.resume-page[data-template="blue-line"] .resume-role::after {
+  content: "";
+  display: block;
+  width: 26mm;
+  height: 1.8mm;
+  margin-top: 2.5mm;
+  background: var(--template-accent);
+}
+
+.resume-page[data-template="blue-line"] .resume-photo-slot {
+  grid-area: photo;
+  justify-self: end;
+  align-self: end;
+}
+
+.resume-page[data-template="blue-line"] .resume-photo {
+  width: 27mm;
+  height: 30mm;
+  border: .25mm solid var(--template-accent);
+  border-radius: 0;
+}
+
+.resume-page[data-template="blue-line"] .resume-contact {
+  grid-area: contacts;
+  align-self: stretch;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1mm;
+  color: #777;
+  font-size: 7.4pt;
+  font-style: italic;
+  line-height: 1.2;
+}
+
+.resume-page[data-template="blue-line"] .contact-item {
+  display: flex;
+  gap: 1.2mm;
+}
+
+.resume-page[data-template="blue-line"] .contact-item b,
+.resume-page[data-template="blue-line"] .contact-icon {
+  display: none;
+}
+
+.resume-page[data-template="blue-line"] [data-contact="location"] { display: none; }
+.resume-page[data-template="blue-line"] .resume-contact a { color: inherit; }
+
+.resume-page[data-template="blue-line"][data-has-photo="false"] .resume-header {
+  grid-template-areas: "identity contacts";
+  grid-template-columns: 46mm minmax(0, 1fr);
+}
+
+.resume-page[data-template="blue-line"] .resume-section {
+  margin-top: var(--resume-section-gap);
+  padding-top: 2mm;
+}
+
+.resume-page[data-template="blue-line"] .section-rail {
+  display: flex;
+  align-items: center;
+  gap: 3.5mm;
+}
+
+.resume-page[data-template="blue-line"] .section-rail::before {
+  content: "";
+  flex: 0 0 26mm;
+  height: 1.8mm;
+  background: var(--template-accent);
+}
+
+.resume-page[data-template="blue-line"] .section-index,
+.resume-page[data-template="blue-line"] .section-icon,
+.resume-page[data-template="blue-line"] .section-kicker {
+  display: none;
+}
+
+.resume-page[data-template="blue-line"] .section-rail h3 {
+  color: var(--template-accent);
+  font-size: 13pt;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.resume-page[data-template="blue-line"] .section-content {
+  padding: 2mm 0 0;
+}
+
+.resume-page[data-template="blue-line"] .resume-entry + .resume-entry {
+  margin-top: 2mm;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading {
+  margin-bottom: .7mm;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-1 > * { text-align: left; }
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2,
+.resume-page[data-template="blue-line"] .entry-heading-count-3 {
+  grid-template-columns: 23mm minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2 .entry-title,
+.resume-page[data-template="blue-line"] .entry-heading-count-2 .entry-subtitle,
+.resume-page[data-template="blue-line"] .entry-heading-count-3 .entry-title,
+.resume-page[data-template="blue-line"] .entry-heading-count-3 .entry-subtitle {
+  grid-column: 2;
+  text-align: left;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-3 .entry-subtitle {
+  grid-column: 3;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2 .entry-date,
+.resume-page[data-template="blue-line"] .entry-heading-count-3 .entry-date {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: left;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2:not(:has(.entry-date)) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2:not(:has(.entry-date)) .entry-title {
+  grid-column: 1;
+}
+
+.resume-page[data-template="blue-line"] .entry-heading-count-2:not(:has(.entry-date)) .entry-subtitle {
+  grid-column: 2;
+}
+
+.resume-page[data-template="blue-line"] .resume-entry > .resume-prose,
+.resume-page[data-template="blue-line"] [data-section-kind="text"] .section-content {
+  margin-left: 23mm;
+}
+
+.resume-page[data-template="blue-line"] .entry-title { font-size: 9.6pt; }
+.resume-page[data-template="blue-line"] .entry-subtitle { font-size: 8.4pt; font-weight: 400; }
+.resume-page[data-template="blue-line"] .entry-date { font-size: 8pt; color: #222; white-space: normal; }
+.resume-page[data-template="blue-line"] .compact-list { padding-left: 5mm; }
+.resume-page[data-template="blue-line"] .page-number { display: none; }

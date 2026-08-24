@@ -52,7 +52,7 @@ test("init, validate, inspect, and invalid-data reporting", async (t) => {
   await writeFile(invalidPath, JSON.stringify(invalid), "utf8");
   const rejected = runCli(["validate", invalidPath]);
   assert.equal(rejected.status, 1);
-  assert.match(rejected.stderr, /layouts\.numbered-rail\.fontSize/);
+  assert.match(rejected.stderr, new RegExp(`layouts\\.${invalid.presentation.activeTemplate}\\.fontSize`));
 });
 
 test("project skill installer writes native discovery paths and preserves existing installs", async (t) => {

@@ -115,8 +115,7 @@
   border-top: .2mm dashed #d4d2cd;
 }
 .resume-page[data-template="numbered-rail"] .entry-heading { margin-bottom: 1.1mm; }
-.resume-page[data-template="numbered-rail"] .entry-title-group strong { color: #17191c; font-size: 10.2pt; }
-.resume-page[data-template="numbered-rail"] .entry-title-group > span { color: #42464c; font-size: 8pt; }
-.resume-page[data-template="numbered-rail"] .entry-meta { color: #20242a; font-size: 7.8pt; }
-.resume-page[data-template="numbered-rail"] .entry-meta em { color: #757575; }
+.resume-page[data-template="numbered-rail"] .entry-title { color: #17191c; font-size: 10.2pt; }
+.resume-page[data-template="numbered-rail"] .entry-subtitle { color: #42464c; font-size: 8pt; }
+.resume-page[data-template="numbered-rail"] .entry-date { color: #20242a; font-size: 7.8pt; }
 .resume-page[data-template="numbered-rail"] .page-number { display: none; }

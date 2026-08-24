@@ -3,6 +3,8 @@ import "./globals.css";
 import "./templates/numbered-rail.css";
 import "./templates/classic-burgundy.css";
 import "./templates/campus-navy.css";
+import "./templates/soft-gray.css";
+import "./templates/blue-line.css";
 
 export const metadata: Metadata = {
   title: "AI Resume · 本地简历工作台",

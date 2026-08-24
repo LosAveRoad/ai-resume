@@ -102,8 +102,7 @@
 .resume-page[data-template="campus-navy"] .compact-list li::marker { color: var(--template-accent); }
 .resume-page[data-template="campus-navy"] .resume-entry + .resume-entry { margin-top: 1.3mm; }
 .resume-page[data-template="campus-navy"] .entry-heading { margin-bottom: .7mm; }
-.resume-page[data-template="campus-navy"] .entry-title-group strong { font-size: 9.5pt; }
-.resume-page[data-template="campus-navy"] .entry-title-group > span { font-size: 8pt; }
-.resume-page[data-template="campus-navy"] .entry-meta { color: #18202d; font-size: 7.5pt; }
-.resume-page[data-template="campus-navy"] .entry-meta em { color: #687386; }
+.resume-page[data-template="campus-navy"] .entry-title { font-size: 9.5pt; }
+.resume-page[data-template="campus-navy"] .entry-subtitle { font-size: 8pt; }
+.resume-page[data-template="campus-navy"] .entry-date { color: #18202d; font-size: 7.5pt; }
 .resume-page[data-template="campus-navy"] .page-number { display: none; }

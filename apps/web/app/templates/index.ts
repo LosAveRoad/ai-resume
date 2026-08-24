@@ -6,7 +6,7 @@ export type LayoutData = {
   sectionGap: number;
 };
 
-export const TEMPLATE_IDS = ["numbered-rail", "classic-burgundy", "campus-navy"] as const;
+export const TEMPLATE_IDS = ["numbered-rail", "classic-burgundy", "campus-navy", "soft-gray", "blue-line"] as const;
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
@@ -44,9 +44,25 @@ export const RESUME_TEMPLATES: Record<TemplateId, ResumeTemplate> = {
     accent: "#082d67",
     defaultLayout: { fontSize: 8.5, lineHeight: 1.32, marginX: 10, marginY: 8, sectionGap: 3 },
   },
+  "soft-gray": {
+    id: "soft-gray",
+    name: "淡雅浅灰",
+    description: "留白、灰阶标题条与均匀信息行",
+    eyebrow: "QUIET",
+    accent: "#6d7882",
+    defaultLayout: { fontSize: 8.75, lineHeight: 1.35, marginX: 13, marginY: 9, sectionGap: 4 },
+  },
+  "blue-line": {
+    id: "blue-line",
+    name: "简洁蓝线",
+    description: "蓝色栏目线、左侧日期与学术简历层级",
+    eyebrow: "ACADEMIC",
+    accent: "#397bb8",
+    defaultLayout: { fontSize: 8.7, lineHeight: 1.35, marginX: 12, marginY: 10, sectionGap: 5 },
+  },
 };
 
-export const DEFAULT_TEMPLATE_ID: TemplateId = "numbered-rail";
+export const DEFAULT_TEMPLATE_ID: TemplateId = "soft-gray";
 
 export function isTemplateId(value: unknown): value is TemplateId {
   return typeof value === "string" && TEMPLATE_IDS.includes(value as TemplateId);
